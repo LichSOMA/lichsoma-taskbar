@@ -1,0 +1,517 @@
+/* LichSOMA's Taskbar Styles */
+
+/* CSS 변수 기본값 */
+:root {
+  --taskbar-height: 45px;
+  --taskbar-color: #0B0A13;
+  --taskbar-opacity: 1;
+}
+
+/* 기본 플레이어 목록 숨기기 */
+#players {
+  display: none !important;
+}
+
+/* 인터페이스 높이 조정 - 작업표시줄 영역 제외 */
+#interface {
+  height: calc(100% - var(--taskbar-height) - 4px) !important;
+}
+
+/* 인터페이스 하단 여백 확보 */
+#ui-bottom {
+  bottom: var(--taskbar-height) !important;
+}
+
+/* 작업표시줄 스타일 */
+.lichsoma-taskbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--taskbar-height);
+  background-color: var(--taskbar-color);
+  opacity: var(--taskbar-opacity);
+  border-top: 0px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px;
+  padding-right: 0;
+  z-index: 100;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.taskbar-left,
+.taskbar-center,
+.taskbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.taskbar-left {
+  flex: 0 0 auto;
+}
+
+/* 중앙 윈도우 영역 컨테이너 */
+.taskbar-center-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.taskbar-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 5px;
+  padding: 0 10px;
+  scroll-behavior: smooth;
+}
+
+/* 스크롤바 숨기기 */
+.taskbar-center::-webkit-scrollbar {
+  display: none;
+}
+
+.taskbar-center {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 페이드 아웃 그라디언트 */
+.taskbar-fade-left {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(to right, var(--taskbar-color) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.taskbar-fade-right {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(to left, var(--taskbar-color) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.taskbar-fade-left.visible {
+  opacity: 1;
+}
+
+.taskbar-fade-right.visible {
+  opacity: 1;
+}
+
+/* 화살표 버튼 */
+.taskbar-scroll-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 32px;
+  background: rgba(11, 10, 19, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  opacity: 0;
+  transition: all 0.3s;
+  font-size: 14px;
+  padding: 0;
+  cursor: default !important;
+}
+
+.taskbar-scroll-btn:hover {
+  background: rgba(255, 187, 0, 0.3);
+  border-color: rgba(255, 187, 0, 0.6);
+  color: #ffbb00;
+}
+
+.taskbar-scroll-btn.visible {
+  opacity: 1;
+}
+
+.taskbar-scroll-btn.left {
+  left: 8px;
+}
+
+.taskbar-scroll-btn.right {
+  right: 8px;
+}
+
+.taskbar-right {
+  flex: 0 0 auto;
+  gap: 8px;
+  margin-right: 15px;
+}
+
+/* 로고 스타일 */
+.taskbar-logo {
+  width: 32px;
+  height: 32px;
+  filter: brightness(0) invert(1);
+  transition: filter 0.2s;
+  cursor: default !important;
+}
+
+.taskbar-logo:hover {
+  filter: brightness(0) saturate(100%) invert(66%) sepia(94%) saturate(1000%) hue-rotate(0deg) brightness(104%) contrast(101%);
+}
+
+.taskbar-logo.active {
+  filter: brightness(0) saturate(100%) invert(66%) sepia(94%) saturate(1000%) hue-rotate(0deg) brightness(104%) contrast(101%);
+}
+
+/* 아이콘 버튼 스타일 */
+.taskbar-icon-btn {
+  width: 20px;
+  height: 32px;
+  background: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: rgba(255, 255, 255, 0.9);
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  padding: 0px;
+  cursor: default !important;
+}
+
+.taskbar-icon-btn:hover {
+  color: #ffbb00;
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.taskbar-icon-btn:focus,
+.taskbar-icon-btn:active,
+.taskbar-icon-btn:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  background: none !important;
+}
+
+.taskbar-icon-btn.active {
+  color: #ffbb00;
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.taskbar-icon-btn#taskbar-minimize-btn.active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* 성능 통계 스타일 */
+.taskbar-stats {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.taskbar-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.taskbar-stat .stat-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.taskbar-stat .stat-value {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+/* 바탕화면 보기 버튼 (Windows 스타일) */
+.taskbar-show-desktop {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  transition: background 0.2s;
+  cursor: default !important;
+}
+
+.taskbar-show-desktop:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* 윈도우 버튼 스타일 */
+.taskbar-window-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0px;
+  color: rgba(255, 255, 255, 0.9);
+  transition: all 0.2s;
+  white-space: nowrap;
+  font-size: 13px;
+  max-width: 180px;
+  height: 32px;
+  min-height: 32px;
+  cursor: default !important;
+}
+
+.taskbar-window-btn.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.taskbar-window-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* 숨김 상태 */
+.taskbar-window-btn.minimized {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  opacity: 1;
+}
+
+.taskbar-window-btn.minimized:hover {
+  background: rgba(255, 255, 255, 0.15);
+  opacity: 1;
+}
+
+.taskbar-window-btn.minimized .window-name,
+.taskbar-window-btn.minimized i {
+  color: #ff4444;
+}
+
+.taskbar-window-btn i {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.taskbar-window-btn .window-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 플레이어 목록 패널 */
+.taskbar-player-list-panel {
+  position: fixed;
+  bottom: var(--taskbar-height, 45px);
+  left: 55px;
+  width: 200px;
+  max-height: 500px;
+  background-color: var(--taskbar-color, #0B0A13);
+  opacity: var(--taskbar-opacity, 1);
+  border: 0px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  transition: opacity 0.2s, transform 0.2s;
+  margin-bottom: 5px;
+}
+
+.taskbar-player-list-panel.hidden {
+  opacity: 0 !important;
+  pointer-events: none;
+  transform: translateY(10px);
+}
+
+/* 헤더 */
+.player-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.player-list-title {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.toggle-offline-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 4px;
+  font-size: 12px;
+  align-items: center;
+  transition: color 0.2s;
+  cursor: default !important;
+}
+
+.toggle-offline-btn:hover {
+  color: #ffbb00;
+}
+
+.toggle-offline-btn:focus,
+.toggle-offline-btn:active {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+/* 컨텐츠 */
+.player-list-content {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.player-list-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.player-list-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.player-list-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.player-list-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 플레이어 아이템 */
+.player-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  transition: background 0.2s;
+  margin-bottom: 4px;
+}
+
+.player-list-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.player-list-item.editable:hover {
+  background: rgba(255, 187, 0, 0.15);
+}
+
+.player-list-item.offline {
+  opacity: 0.5;
+}
+
+.player-status {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.player-name {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: bold;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-list-item.gm .player-name {
+  color: #ffbb00;
+}
+
+.player-gm-tag {
+  background: #ce2c3c;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+/* 핫바 */
+#hotbar {
+  margin: 0 0 5px !important;
+}
+
+/* 핫바 보이기 버튼 */
+.taskbar-show-hotbar-btn {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 16px;
+  z-index: 99;
+  transition: all 0.3s ease;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  opacity: 0.4;
+  text-shadow: 
+    -1px -1px 0 rgba(0, 0, 0, 0.8),
+    1px -1px 0 rgba(0, 0, 0, 0.8),
+    -1px 1px 0 rgba(0, 0, 0, 0.8),
+    1px 1px 0 rgba(0, 0, 0, 0.8);
+}
+
+.taskbar-show-hotbar-btn:hover {
+  opacity: 1;
+}
+
+.taskbar-show-hotbar-btn i {
+  font-size: 20px;
+}
+
+.form-group.upload-file input[type="file"]::file-selector-button {
+  background: #6B6B6B;
+  border: 1px solid #6B6B6B;
+}
+

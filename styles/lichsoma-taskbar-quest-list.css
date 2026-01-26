@@ -1,0 +1,344 @@
+/* 퀘스트 리스트 패널 */
+.taskbar-quest-list-panel {
+  position: fixed;
+  top: 15px;
+  width: 300px;
+  min-height: 100px;
+  max-height: calc(50vh);
+  background: color-mix(in srgb, var(--background-color, var(--color-cool-5)) 50%, transparent);
+  border: none;
+  outline: none;
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  transition: opacity 0.2s, transform 0.2s, right 0.3s;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+}
+
+
+/* 퀘스트 리스트 패널의 모든 텍스트에 그림자 적용 */
+.taskbar-quest-list-panel,
+.taskbar-quest-list-panel * {
+  text-shadow: 
+    0 0 4px rgba(0, 0, 0, 0.8),
+    0 0 2px rgba(0, 0, 0, 0.6),
+    0 0 1px rgba(0, 0, 0, 0.4),
+    1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.taskbar-quest-list-panel.hidden {
+  opacity: 0 !important;
+  pointer-events: none;
+  transform: translateY(10px);
+}
+
+/* 헤더 */
+.quest-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  pointer-events: auto;
+  position: relative;
+  z-index: 100;
+}
+
+.quest-header-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.quest-list-title {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.quest-add-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 4px 8px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+  cursor: pointer !important;
+  border-radius: 3px;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 100;
+}
+
+.quest-add-btn:hover {
+  color: #ffbb00;
+}
+
+.quest-add-btn:hover i {
+  color: #ffbb00;
+}
+
+.quest-add-btn:focus,
+.quest-add-btn:active {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+.quest-reset-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 4px 8px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+  cursor: pointer !important;
+  border-radius: 3px;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 100;
+}
+
+.quest-reset-btn:hover {
+  color: #f44336;
+}
+
+.quest-reset-btn:hover i {
+  color: #f44336;
+}
+
+.quest-reset-btn:focus,
+.quest-reset-btn:active {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+/* 컨텐츠 */
+.quest-list-content {
+  flex: 1;
+  overflow-y: auto;
+  margin: 8px;
+  border-radius: 12px;
+  min-height: 50px;
+  overscroll-behavior: contain;
+}
+
+/* 스크롤바 숨기기 */
+.quest-list-content::-webkit-scrollbar {
+  display: none;
+  width: 0;
+}
+
+.quest-list-content {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* 퀘스트가 없을 때 메시지 */
+.quest-empty-message {
+  padding: 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
+
+/* 퀘스트 아이템 */
+.quest-item {
+  margin-bottom: 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quest-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  cursor: pointer;
+}
+
+.quest-title-container {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  gap: 6px;
+}
+
+.quest-toggle-icon {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.quest-item.quest-collapsed .quest-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.quest-item-title {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  cursor: pointer !important;
+  transition: color 0.2s;
+  pointer-events: auto !important;
+  flex: 0 1 auto;
+  transition: color 0.2s;
+}
+
+.quest-item-title:hover {
+  color: #ffbb00;
+}
+
+.quest-item-controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  pointer-events: auto;
+}
+
+/* 버튼 호버 시 타이틀 색상 변경 방지 */
+.quest-item-controls:hover ~ .quest-title-container .quest-item-title {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.quest-edit-btn,
+.quest-delete-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 4px;
+  font-size: 12px;
+  cursor: pointer !important;
+  transition: color 0.2s;
+  pointer-events: auto !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quest-edit-btn:hover {
+  color: #ffbb00;
+}
+
+.quest-delete-btn:hover {
+  color: #f44336;
+}
+
+/* 달성 목표 목록 */
+.quest-objectives-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+  gap: 6px;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+  max-height: 1000px;
+  opacity: 1;
+}
+
+.quest-objectives-list.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.quest-objective-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-left: 6px;
+  border-left: 3px solid #afafaf;
+}
+
+.quest-objective-item.objective-success {
+  color: #4CAF50;
+  opacity: 0.75;
+  text-decoration: line-through;
+  border-left-color: #4CAF50;
+}
+
+.quest-objective-item.objective-failure {
+  color: #f44336;
+  opacity: 0.75;
+  text-decoration: line-through;
+  border-left-color: #f44336;
+}
+
+.quest-objective-text {
+  flex: 1;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.quest-objective-item.objective-success .quest-objective-text {
+  color: #4CAF50;
+}
+
+.quest-objective-item.objective-failure .quest-objective-text {
+  color: #f44336;
+}
+
+.quest-objective-controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.quest-objective-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 4px 6px;
+  font-size: 11px;
+  cursor: pointer !important;
+  transition: color 0.2s;
+  pointer-events: auto !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quest-objective-btn:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.quest-objective-success-btn:hover {
+  color: #4CAF50;
+}
+
+.quest-objective-failure-btn:hover {
+  color: #f44336;
+}
+
+/* 퀘스트 수정 다이얼로그 스타일 */
+#quest-edit-form .objective-input-group label,
+#quest-edit-form .form-group > label {
+  max-width: 85px !important;
+}
+
+.remove-objective-btn {
+  width: 30px !important;
+  height: 30px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+

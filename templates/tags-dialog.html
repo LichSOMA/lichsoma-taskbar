@@ -1,0 +1,80 @@
+<style>
+  .tags-dialog {
+    padding: 5px;
+  }
+  .tags-dialog .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 0px;
+    margin-bottom: 5px;
+  }
+  .tags-dialog label {
+    font-weight: bold;
+    font-size: 14px;
+  }
+  .tags-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .tag-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tag-input {
+    flex: 1;
+    padding: 4px 8px;
+    font-size: 13px;
+    border: 1px solid #999;
+    border-radius: 3px;
+    background: white;
+    color: black;
+  }
+  .tag-remove-btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid #d33;
+    border-radius: 3px;
+    background: #f44;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    line-height: 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .tag-remove-btn:hover {
+    background: #d33;
+  }
+  .tag-item.confirmed .tag-input {
+    background: #e8e8e8;
+    cursor: default;
+  }
+  .tag-item.new-tag .tag-input {
+    background: white;
+    border-color: #4a90e2;
+  }
+</style>
+<div class="tags-dialog">
+  <div class="form-group">
+    <label>{{label}}</label>
+    <div class="tags-container" id="tags-container">
+      {{#each tags}}
+      <div class="tag-item confirmed" data-tag-index="{{@index}}">
+        <input type="text" class="tag-input" value="{{this}}" readonly />
+        <button type="button" class="tag-remove-btn" title="Remove">×</button>
+      </div>
+      {{/each}}
+      <div class="tag-item new-tag">
+        <input type="text" class="tag-input new-tag-input" placeholder="Tag" />
+        <span style="width: 24px;"></span>
+      </div>
+    </div>
+  </div>
+</div>
+

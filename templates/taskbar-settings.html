@@ -1,0 +1,72 @@
+<form class="taskbar-settings-form">
+  <div class="form-group">
+    <label>{{localize "Taskbar.Settings.Color"}}</label>
+    <div class="form-fields" style="display: flex; gap: 10px; align-items: center;">
+      <input type="color" name="color" value="{{color}}" style="width: 60px; height: 36px;" />
+      <input type="text" name="colorText" value="{{color}}" placeholder="#0B0A13" style="flex: 1;" />
+    </div>
+    <p class="notes">{{localize "Taskbar.Settings.ColorHint"}}</p>
+  </div>
+
+  <div class="form-group">
+    <label>{{localize "Taskbar.Settings.Opacity"}}</label>
+    <div class="form-fields">
+      <input type="range" name="opacity" value="{{opacity}}" min="0" max="100" step="5" />
+      <span class="range-value">{{opacity}}%</span>
+    </div>
+    <p class="notes">{{localize "Taskbar.Settings.OpacityHint"}}</p>
+  </div>
+
+  <footer class="sheet-footer flexrow" style="margin-top: 1rem; gap: 10px;">
+    <button type="button" name="reset" style="flex: 0 0 auto;">
+      <i class="fas fa-undo"></i> {{localize "Taskbar.Settings.Reset"}}
+    </button>
+    <button type="submit" name="submit" style="flex: 1;">
+      <i class="fas fa-save"></i> {{localize "Taskbar.Save"}}
+    </button>
+  </footer>
+</form>
+
+<style>
+.taskbar-settings-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.taskbar-settings-form .form-fields {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.taskbar-settings-form input[type="range"] {
+  flex: 1;
+}
+
+.taskbar-settings-form .range-value {
+  min-width: 50px;
+  text-align: right;
+  font-weight: bold;
+}
+
+.taskbar-settings-form .notes {
+  font-size: 0.85em;
+  color: var(--color-text-dark-secondary);
+  margin-top: 0.25rem;
+}
+</style>
+
+<script>
+// 슬라이더 값 업데이트
+document.querySelectorAll('input[type="range"]').forEach(slider => {
+  const updateValue = () => {
+    const valueSpan = slider.parentElement.querySelector('.range-value');
+    if (valueSpan) {
+      valueSpan.textContent = slider.value + '%';
+    }
+  };
+  
+  slider.addEventListener('input', updateValue);
+  updateValue();
+});
+</script>
+

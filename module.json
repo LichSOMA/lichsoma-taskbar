@@ -1,0 +1,48 @@
+{
+    "id": "lichsoma-taskbar",
+    "title": "LichSOMA's Taskbar",
+    "description": "A taskbar module for Foundry VTT",
+    "version": "1.0.0",
+    "compatibility": {
+      "minimum": "13",
+      "verified": "13",
+      "maximum": "13"
+    },
+    "authors": [
+      {
+        "name": "LichSoma"
+      }
+    ],
+    "esmodules": [
+      "scripts/lichsoma-taskbar-settings.js",
+      "scripts/lichsoma-taskbar-system-menu.js",
+      "scripts/lichsoma-taskbar-tagger.js",
+      "scripts/lichsoma-taskbar-hotbar.js",
+      "scripts/lichsoma-taskbar-screen.js",
+      "scripts/lichsoma-taskbar-quest-list.js",
+      "scripts/lichsoma-taskbar-filepicker-preview.js",
+      "scripts/lichsoma-taskbar.js"
+    ],
+    "styles": [
+      "styles/lichsoma-taskbar.css",
+      "styles/lichsoma-taskbar-system-menu.css",
+      "styles/lichsoma-taskbar-screen.css",
+      "styles/lichsoma-taskbar-quest-list.css",
+      "styles/lichsoma-taskbar-filepicker-preview.css"
+    ],
+    "languages": [
+      {
+        "lang": "ko",
+        "name": "Korean",
+        "path": "lang/ko.json"
+      }
+    ],
+    "socket": true,
+    "url": "",
+    "manifest": "",
+    "download": "",
+    "license": "",
+    "readme": ""
+  }
+  
+  
