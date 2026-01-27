@@ -221,7 +221,7 @@ window.createScreenPanel = function() {
       dialogs.forEach(dialog => {
         const title = dialog.querySelector('.window-header h4')?.textContent;
         if (title === game.i18n.localize('Taskbar.ClearCurrentTab')) {
-          dialog.style.zIndex = '10000';
+          dialog.style.zIndex = '9999';
         }
       });
     }, 100);
@@ -567,7 +567,7 @@ function openScreenConfigDialog() {
     dialogs.forEach(dialogElement => {
       const title = dialogElement.querySelector('.window-header h4')?.textContent;
       if (title === dialogTitle) {
-        dialogElement.style.zIndex = '10000';
+        dialogElement.style.zIndex = '9999';
       }
     });
   }, 100);

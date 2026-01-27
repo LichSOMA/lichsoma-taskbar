@@ -947,8 +947,12 @@ function bringElementToTop(element) {
     if (z > maxZ) maxZ = z;
   });
   
-  // 최대값 + 1로 설정 (최소값 100 보장)
-  element.style.zIndex = Math.max(maxZ + 1, 100);
+  // 현재 z-index가 999 이하인 경우에만 조정 (9999 이상은 고정된 다이얼로그)
+  const currentZIndex = getElementZIndex(element);
+  if (currentZIndex <= 999) {
+    // 최대값 + 1로 설정 (최소값 100 보장, 최대값 999 제한)
+    element.style.zIndex = Math.min(Math.max(maxZ + 1, 100), 999);
+  }
 }
 
 // Element가 최상단인지 확인
