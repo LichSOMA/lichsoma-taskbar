@@ -1,5 +1,7 @@
 // LichSOMA's Taskbar - Screen (GM Screen / Player Screen)
 
+const DialogV2 = foundry.applications.api.DialogV2;
+
 // 스크린 데이터 저장
 let screenTabs = [
   { id: 'tab-1', name: '기본', color: 'rgba(64, 64, 64, 0.5)', items: [] }
@@ -202,27 +204,28 @@ window.createScreenPanel = function() {
   // 모두 제거 버튼
   const clearBtn = panel.querySelector('.screen-clear-btn');
   clearBtn.addEventListener('click', () => {
-    Dialog.confirm({
-      title: game.i18n.localize('Taskbar.ClearCurrentTab'),
-      content: `<p>${game.i18n.localize('Taskbar.ClearCurrentTab')}?</p>`,
-      yes: () => {
-        const activeTab = getActiveTab();
-        if (activeTab) {
-          activeTab.items = [];
-          saveScreenItems();
-          updateScreenContent();
+    const clearTitle = game.i18n.localize('Taskbar.ClearCurrentTab');
+    void DialogV2.confirm({
+      modal: true,
+      window: { title: clearTitle },
+      content: `<p>${clearTitle}?</p>`,
+      yes: {
+        callback: () => {
+          const activeTab = getActiveTab();
+          if (activeTab) {
+            activeTab.items = [];
+            saveScreenItems();
+            updateScreenContent();
+          }
+          return true;
         }
       },
-      defaultYes: false
+      no: { default: true, callback: () => false }
     });
-    // 다이얼로그가 렌더링된 후 z-index 설정
     setTimeout(() => {
-      const dialogs = document.querySelectorAll('.window-app');
-      dialogs.forEach(dialog => {
-        const title = dialog.querySelector('.window-header h4')?.textContent;
-        if (title === game.i18n.localize('Taskbar.ClearCurrentTab')) {
-          dialog.style.zIndex = '9999';
-        }
+      document.querySelectorAll('dialog.application, dialog.dialog').forEach(el => {
+        const title = el.querySelector('.window-title')?.textContent?.trim();
+        if (title === clearTitle) el.style.zIndex = '9999';
       });
     }, 100);
   });
@@ -334,8 +337,10 @@ function updateScreenTitle() {
 
 // 새 탭 추가 다이얼로그
 function openAddTabDialog() {
-  new Dialog({
-    title: game.i18n.localize('Taskbar.AddNewTab'),
+  const dlg = new DialogV2({
+    modal: true,
+    window: { title: game.i18n.localize('Taskbar.AddNewTab') },
+    position: { width: 400 },
     content: `
       <form>
         <div class="form-group">
@@ -348,75 +353,70 @@ function openAddTabDialog() {
             <input type="color" name="tabColor" value="#404040" style="width: 60px; height: 32px;" />
             <input type="text" name="tabColorCode" value="#404040" placeholder="#RRGGBB" style="flex: 1; font-family: monospace;" />
           </div>
-          <p class="hint">${game.i18n.localize('Taskbar.TabColorHint')}</p>
         </div>
       </form>
     `,
-    buttons: {
-      add: {
-        icon: '<i class="fas fa-check"></i>',
-        label: game.i18n.localize('Taskbar.Save'),
-        callback: (html) => {
-          const name = html.find('[name="tabName"]').val().trim();
-          let color = html.find('[name="tabColorCode"]').val().trim();
-          
-          // 색상 코드 검증
-          if (!color.startsWith('#')) {
-            color = '#' + color;
-          }
-          if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
-            ui.notifications.warn(game.i18n.localize('Taskbar.InvalidColorCode'));
-            return;
-          }
-          
-          if (name) {
-            // hex를 rgba로 변환하고 투명도 0.5 적용
-            const rgba = hexToRgba(color, 0.5);
-            const newTab = {
-              id: `tab-${Date.now()}`,
-              name: name,
-              color: rgba,
-              items: []
-            };
-            screenTabs.push(newTab);
-            activeTabId = newTab.id;
-            saveScreenItems();
-            renderTabsSidebar();
-            updateScreenContent();
-          }
+    buttons: [{
+      action: 'add',
+      label: game.i18n.localize('Taskbar.Save'),
+      icon: 'fa-solid fa-check',
+      default: true,
+      callback: (event, button, dialog) => {
+        const html = $(dialog.element);
+        const name = html.find('[name="tabName"]').val().trim();
+        let color = html.find('[name="tabColorCode"]').val().trim();
+        if (!color.startsWith('#')) {
+          color = '#' + color;
+        }
+        if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
+          ui.notifications.warn(game.i18n.localize('Taskbar.InvalidColorCode'));
+          return;
+        }
+        if (name) {
+          const rgba = hexToRgba(color, 0.5);
+          const newTab = {
+            id: `tab-${Date.now()}`,
+            name: name,
+            color: rgba,
+            items: []
+          };
+          screenTabs.push(newTab);
+          activeTabId = newTab.id;
+          saveScreenItems();
+          renderTabsSidebar();
+          updateScreenContent();
         }
       }
-    },
-    default: 'add',
-    render: (html) => {
-      // color picker와 텍스트 필드 동기화
-      const colorPicker = html.find('[name="tabColor"]');
-      const colorCode = html.find('[name="tabColorCode"]');
-      
-      colorPicker.on('input', (e) => {
-        colorCode.val(e.target.value);
-      });
-      
-      colorCode.on('input', (e) => {
-        let value = e.target.value.trim();
-        if (!value.startsWith('#')) {
-          value = '#' + value;
-        }
-        if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
-          colorPicker.val(value);
-        }
-      });
-    }
-  }).render(true);
+    }]
+  });
+  dlg.addEventListener('render', () => {
+    const html = $(dlg.element);
+    const colorPicker = html.find('[name="tabColor"]');
+    const colorCode = html.find('[name="tabColorCode"]');
+    colorPicker.on('input', (e) => {
+      colorCode.val(e.target.value);
+    });
+    colorCode.on('input', (e) => {
+      let value = e.target.value.trim();
+      if (!value.startsWith('#')) {
+        value = '#' + value;
+      }
+      if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+        colorPicker.val(value);
+      }
+    });
+  }, { once: true });
+  dlg.render({ force: true });
 }
 
 // 탭 수정 다이얼로그
 function openEditTabDialog(tab) {
-  // 현재 색상을 hex로 변환
   const currentColor = rgbaToHex(tab.color || 'rgba(64, 64, 64, 0.5)');
-  
-  new Dialog({
-    title: game.i18n.localize('Taskbar.TabSettings'),
+
+  const dlg = new DialogV2({
+    modal: true,
+    window: { title: game.i18n.localize('Taskbar.TabSettings') },
+    position: { width: 400 },
     content: `
       <form>
         <div class="form-group">
@@ -433,15 +433,16 @@ function openEditTabDialog(tab) {
         </div>
       </form>
     `,
-    buttons: {
-      save: {
-        icon: '<i class="fas fa-check"></i>',
+    buttons: [
+      {
+        action: 'save',
         label: game.i18n.localize('Taskbar.Save'),
-        callback: (html) => {
+        icon: 'fa-solid fa-check',
+        default: true,
+        callback: (event, button, dialog) => {
+          const html = $(dialog.element);
           const name = html.find('[name="tabName"]').val().trim();
           let color = html.find('[name="tabColorCode"]').val().trim();
-          
-          // 색상 코드 검증
           if (!color.startsWith('#')) {
             color = '#' + color;
           }
@@ -449,7 +450,6 @@ function openEditTabDialog(tab) {
             ui.notifications.warn(game.i18n.localize('Taskbar.InvalidColorCode'));
             return;
           }
-          
           if (name) {
             tab.name = name;
             tab.color = hexToRgba(color, 0.5);
@@ -458,16 +458,15 @@ function openEditTabDialog(tab) {
           }
         }
       },
-      delete: {
-        icon: '<i class="fas fa-trash"></i>',
+      {
+        action: 'delete',
         label: game.i18n.localize('Taskbar.DeleteTab'),
+        icon: 'fa-solid fa-trash',
         callback: () => {
           if (screenTabs.length <= 1) {
             ui.notifications.warn(game.i18n.localize('Taskbar.MinimumTabWarning'));
             return;
           }
-          
-          // 바로 삭제
           screenTabs = screenTabs.filter(t => t.id !== tab.id);
           if (activeTabId === tab.id) {
             activeTabId = screenTabs[0].id;
@@ -477,28 +476,26 @@ function openEditTabDialog(tab) {
           updateScreenContent();
         }
       }
-    },
-    default: 'save',
-    render: (html) => {
-      // color picker와 텍스트 필드 동기화
-      const colorPicker = html.find('[name="tabColor"]');
-      const colorCode = html.find('[name="tabColorCode"]');
-      
-      colorPicker.on('input', (e) => {
-        colorCode.val(e.target.value);
-      });
-      
-      colorCode.on('input', (e) => {
-        let value = e.target.value.trim();
-        if (!value.startsWith('#')) {
-          value = '#' + value;
-        }
-        if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
-          colorPicker.val(value);
-        }
-      });
-    }
-  }).render(true);
+    ]
+  });
+  dlg.addEventListener('render', () => {
+    const html = $(dlg.element);
+    const colorPicker = html.find('[name="tabColor"]');
+    const colorCode = html.find('[name="tabColorCode"]');
+    colorPicker.on('input', (e) => {
+      colorCode.val(e.target.value);
+    });
+    colorCode.on('input', (e) => {
+      let value = e.target.value.trim();
+      if (!value.startsWith('#')) {
+        value = '#' + value;
+      }
+      if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+        colorPicker.val(value);
+      }
+    });
+  }, { once: true });
+  dlg.render({ force: true });
 }
 
 // hex 색상을 rgba로 변환
@@ -523,54 +520,44 @@ function rgbaToHex(rgba) {
 // 스크린 크기 설정 다이얼로그
 function openScreenConfigDialog() {
   const dialogTitle = game.i18n.localize('Taskbar.ScreenSizeSettings');
-  const dialog = new Dialog({
-    title: dialogTitle,
+  const dlg = new DialogV2({
+    modal: true,
+    window: { title: dialogTitle },
+    position: { width: 400 },
     content: `
       <form>
         <div class="form-group">
           <label>${game.i18n.localize('Taskbar.ScreenColumns')}</label>
           <input type="number" name="columns" value="${screenConfig.columns}" min="10" max="40" step="1" />
-          <p class="hint">${game.i18n.localize('Taskbar.ScreenColumnsHint')}</p>
         </div>
         <div class="form-group">
           <label>${game.i18n.localize('Taskbar.ScreenRows')}</label>
           <input type="number" name="rows" value="${screenConfig.rows}" min="8" max="24" step="1" />
-          <p class="hint">${game.i18n.localize('Taskbar.ScreenRowsHint')}</p>
         </div>
       </form>
     `,
-    buttons: {
-      save: {
-        icon: '<i class="fas fa-check"></i>',
-        label: game.i18n.localize('Taskbar.Save'),
-        callback: (html) => {
-          const newColumns = parseInt(html.find('[name="columns"]').val());
-          const newRows = parseInt(html.find('[name="rows"]').val());
-          
-          screenConfig.columns = Math.max(10, Math.min(40, newColumns));
-          screenConfig.rows = Math.max(8, Math.min(24, newRows));
-          
-          saveScreenConfig();
-          applyScreenSize();
-          updateScreenContent();
-          
-          ui.notifications.info(`${game.i18n.localize('Taskbar.ScreenSizeChanged')}: ${screenConfig.columns}×${screenConfig.rows} (${screenConfig.columns * 50}px × ${screenConfig.rows * 50}px)`);
-        }
+    buttons: [{
+      action: 'save',
+      label: game.i18n.localize('Taskbar.Save'),
+      icon: 'fa-solid fa-check',
+      default: true,
+      callback: (event, button, dialog) => {
+        const html = $(dialog.element);
+        const newColumns = parseInt(html.find('[name="columns"]').val());
+        const newRows = parseInt(html.find('[name="rows"]').val());
+        screenConfig.columns = Math.max(10, Math.min(40, newColumns));
+        screenConfig.rows = Math.max(8, Math.min(24, newRows));
+        saveScreenConfig();
+        applyScreenSize();
+        updateScreenContent();
+        ui.notifications.info(`${game.i18n.localize('Taskbar.ScreenSizeChanged')}: ${screenConfig.columns}×${screenConfig.rows} (${screenConfig.columns * 50}px × ${screenConfig.rows * 50}px)`);
       }
-    },
-    default: 'save'
+    }]
   });
-  dialog.render(true);
-  // 다이얼로그가 렌더링된 후 z-index 설정
-  setTimeout(() => {
-    const dialogs = document.querySelectorAll('.window-app');
-    dialogs.forEach(dialogElement => {
-      const title = dialogElement.querySelector('.window-header h4')?.textContent;
-      if (title === dialogTitle) {
-        dialogElement.style.zIndex = '9999';
-      }
-    });
-  }, 100);
+  dlg.addEventListener('render', () => {
+    dlg.element.style.zIndex = '9999';
+  }, { once: true });
+  dlg.render({ force: true });
 }
 
 // 스크린 토글
@@ -923,8 +910,10 @@ function openJournalPageSelectDialog(journal) {
     `<option value="${page.id}">${page.name}</option>`
   ).join('');
   
-  new Dialog({
-    title: `${game.i18n.localize('Taskbar.PageSelect')}: ${journal.name}`,
+  const dlg = new DialogV2({
+    modal: true,
+    window: { title: `${game.i18n.localize('Taskbar.PageSelect')}: ${journal.name}` },
+    position: { width: 420 },
     content: `
       <form>
         <div class="form-group">
@@ -951,26 +940,26 @@ function openJournalPageSelectDialog(journal) {
         </div>
       </form>
     `,
-    buttons: {
-      add: {
-        icon: '<i class="fas fa-check"></i>',
-        label: game.i18n.localize('Taskbar.Add'),
-        callback: (html) => {
-          const pageId = html.find('[name="pageId"]').val();
-          const col = parseInt(html.find('[name="col"]').val());
-          const row = parseInt(html.find('[name="row"]').val());
-          const colSpan = parseInt(html.find('[name="colSpan"]').val());
-          const rowSpan = parseInt(html.find('[name="rowSpan"]').val());
-          
-          const page = journal.pages.get(pageId);
-          if (page) {
-            addItemToScreen(journal, page, { col, row, colSpan, rowSpan });
-          }
+    buttons: [{
+      action: 'add',
+      label: game.i18n.localize('Taskbar.Add'),
+      icon: 'fa-solid fa-check',
+      default: true,
+      callback: (event, button, dialog) => {
+        const html = $(dialog.element);
+        const pageId = html.find('[name="pageId"]').val();
+        const col = parseInt(html.find('[name="col"]').val());
+        const row = parseInt(html.find('[name="row"]').val());
+        const colSpan = parseInt(html.find('[name="colSpan"]').val());
+        const rowSpan = parseInt(html.find('[name="rowSpan"]').val());
+        const page = journal.pages.get(pageId);
+        if (page) {
+          addItemToScreen(journal, page, { col, row, colSpan, rowSpan });
         }
       }
-    },
-    default: 'add'
-  }).render(true);
+    }]
+  });
+  dlg.render({ force: true });
 }
 
 // 스크린에 아이템 추가
@@ -1706,9 +1695,11 @@ function openActorEditDialog(actor) {
   const hp = actor.system.attributes?.hp;
   const currentHp = hp?.value || 0;
   const maxHp = hp?.max || 0;
-  
-  new Dialog({
-    title: `빠른 편집: ${actor.name}`,
+
+  const dlg = new DialogV2({
+    modal: true,
+    window: { title: `빠른 편집: ${actor.name}` },
+    position: { width: 360 },
     content: `
       <form>
         <div class="form-group">
@@ -1720,11 +1711,14 @@ function openActorEditDialog(actor) {
         </div>
       </form>
     `,
-    buttons: {
-      save: {
-        icon: '<i class="fas fa-check"></i>',
+    buttons: [
+      {
+        action: 'save',
         label: '저장',
-        callback: (html) => {
+        icon: 'fa-solid fa-check',
+        default: true,
+        callback: (event, button, dialog) => {
+          const html = $(dialog.element);
           const newHp = parseInt(html.find('[name="hp"]').val());
           if (!isNaN(newHp)) {
             actor.update({ 'system.attributes.hp.value': newHp });
@@ -1733,12 +1727,15 @@ function openActorEditDialog(actor) {
           }
         }
       },
-      cancel: {
-        icon: '<i class="fas fa-times"></i>',
-        label: '취소'
+      {
+        action: 'cancel',
+        label: '취소',
+        icon: 'fa-solid fa-times',
+        callback: () => null
       }
-    }
-  }).render(true);
+    ]
+  });
+  dlg.render({ force: true });
 }
 
 // 저널 편집 다이얼로그

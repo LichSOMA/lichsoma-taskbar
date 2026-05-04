@@ -1,5 +1,7 @@
 // LichSOMA's Taskbar Quest List Script
 
+const DialogV2 = foundry.applications.api.DialogV2;
+
 // 퀘스트 패널 열림 상태 (클라이언트 단위)
 let questListVisible = false;
 
@@ -27,12 +29,33 @@ function saveQuestListVisible() {
   localStorage.setItem(`lichsoma-taskbar-quest-list-visible-${worldId}-${userId}`, JSON.stringify(questListVisible));
 }
 
+Hooks.once('init', () => {
+  game.settings.register('lichsoma-taskbar', 'useQuestList', {
+    name: 'Taskbar.UseQuestList',
+    hint: 'Taskbar.UseQuestListHint',
+    scope: 'client',
+    config: true,
+    type: Boolean,
+    default: false,
+    onChange: () => {
+      if (typeof window.applyQuestListSetting === 'function') window.applyQuestListSetting();
+    }
+  });
+});
+
 // 퀘스트 패널 생성
 window.createQuestListPanel = function() {
+  const useQuest = game.settings.get('lichsoma-taskbar', 'useQuestList');
+  if (!useQuest) {
+    questListVisible = false;
+  }
+
   const panel = document.createElement('div');
   panel.id = 'taskbar-quest-list-panel';
-  // 저장된 상태에 따라 초기 표시 여부 결정
-  panel.className = questListVisible ? 'taskbar-quest-list-panel' : 'taskbar-quest-list-panel hidden';
+  // 저장된 상태에 따라 초기 표시 여부 결정 (비활성화 시 항상 숨김)
+  panel.className = (questListVisible && useQuest)
+    ? 'taskbar-quest-list-panel'
+    : 'taskbar-quest-list-panel hidden';
   
   panel.innerHTML = `
     <div class="quest-list-header">
@@ -87,12 +110,12 @@ window.createQuestListPanel = function() {
         resetBtn.blur();
         
         // 확인 다이얼로그
-        const confirmed = await Dialog.confirm({
-          title: game.i18n.localize('Taskbar.QuestResetAll'),
-          content: game.i18n.localize('Taskbar.QuestResetAllConfirm'),
-          yes: () => true,
-          no: () => false,
-          defaultYes: false
+        const confirmed = await DialogV2.confirm({
+          modal: true,
+          window: { title: game.i18n.localize('Taskbar.QuestResetAll') },
+          content: `<p>${game.i18n.localize('Taskbar.QuestResetAllConfirm')}</p>`,
+          yes: { callback: () => true },
+          no: { default: true, callback: () => false }
         });
         
         if (confirmed) {
@@ -107,23 +130,16 @@ window.createQuestListPanel = function() {
   }
   
   // ui-right-column-1에 추가 (enemy-hud와 같은 위치)
+  // insertBefore(enemyHud.nextSibling)는 enemy-hud가 해당 열의 자식이 아니면 DOM 예외가 난다
   const uiRightColumn = document.getElementById('ui-right-column-1');
   if (uiRightColumn) {
-    // enemy-hud 다음에 추가
     const enemyHud = document.getElementById('dx3rd-enemy-hud');
-    if (enemyHud) {
-      // enemy-hud 다음에 추가
-      if (enemyHud.nextSibling) {
-        uiRightColumn.insertBefore(panel, enemyHud.nextSibling);
-      } else {
-        uiRightColumn.appendChild(panel);
-      }
+    if (enemyHud && uiRightColumn.contains(enemyHud)) {
+      enemyHud.insertAdjacentElement('afterend', panel);
     } else {
-      // enemy-hud가 없으면 첫 번째 자식으로 추가
-      uiRightColumn.insertBefore(panel, uiRightColumn.firstChild);
+      uiRightColumn.appendChild(panel);
     }
   } else {
-    // ui-right-column-1이 없으면 body에 추가
     document.body.appendChild(panel);
   }
   
@@ -135,7 +151,7 @@ window.createQuestListPanel = function() {
   
   // 저장된 상태에 따라 버튼 상태 업데이트
   const questBtn = document.querySelector('#taskbar-quest-btn');
-  if (questBtn && questListVisible) {
+  if (questBtn && questListVisible && useQuest) {
     questBtn.classList.add('active');
   }
   
@@ -145,40 +161,20 @@ window.createQuestListPanel = function() {
   // 마우스휠 이벤트 처리 (스크롤이 제대로 작동하도록)
   const questListContent = panel.querySelector('#quest-list-content');
   
-  // 패널 전체에서 wheel 이벤트 캡처 (확대/축소 방지)
-  // 캡처 단계에서 처리하여 Foundry의 전역 wheel 핸들러보다 먼저 처리
+  // 패널 내부에서 발생한 wheel 이벤트가 Foundry 전역 핸들러(캔버스 줌 등)로 전파되지 않게 차단
+  // 기본 스크롤은 CSS(overflow-y: auto)로 처리하므로 preventDefault는 사용하지 않는다.
   panel.addEventListener('wheel', (e) => {
-    // 패널 내부에서 발생한 모든 wheel 이벤트는 기본 동작과 전파를 막음
-    e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
-    
-    // 컨텐츠 영역이 스크롤 가능한 경우 스크롤 처리
-    if (questListContent && questListContent.scrollHeight > questListContent.clientHeight) {
-      const delta = e.deltaY || e.deltaX || 0;
-      questListContent.scrollTop += delta;
-    }
-  }, true); // 캡처 단계에서 처리
-  
-  // 컨텐츠 영역에서도 wheel 이벤트 처리 (이중 보호)
-  if (questListContent) {
-    questListContent.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      
-      // 스크롤 가능한 경우 스크롤 처리
-      if (questListContent.scrollHeight > questListContent.clientHeight) {
-        const delta = e.deltaY || e.deltaX || 0;
-        questListContent.scrollTop += delta;
-      }
-    }, true); // 캡처 단계에서 처리
-  }
+  }, { capture: true, passive: true });
 };
 
 // ready 훅에서 상태 불러오기 및 Socket 등록
 Hooks.once('ready', () => {
   loadQuestListVisible();
+  if (!game.settings.get('lichsoma-taskbar', 'useQuestList')) {
+    questListVisible = false;
+  }
   registerQuestSettings();
   setupQuestSocket();
   loadQuests();
@@ -304,6 +300,8 @@ function observeQuestListSidebarChanges() {
 
 // 퀘스트 패널 토글
 window.toggleQuestList = function(questBtn) {
+  if (!game.settings.get('lichsoma-taskbar', 'useQuestList')) return;
+
   const questPanel = document.getElementById('taskbar-quest-list-panel');
   const systemPanel = document.getElementById('taskbar-system-menu-panel');
   const playerPanel = document.getElementById('taskbar-player-list-panel');
@@ -359,8 +357,40 @@ window.toggleQuestList = function(questBtn) {
   }
 };
 
+// 모듈 설정「퀘스트 리스트 활성화」에 맞춰 버튼·패널 표시 동기화
+window.applyQuestListSetting = function() {
+  const use = game.settings.get('lichsoma-taskbar', 'useQuestList');
+  const questBtn = document.querySelector('#taskbar-quest-btn');
+  const questPanel = document.getElementById('taskbar-quest-list-panel');
+
+  if (!use) {
+    if (questBtn) {
+      questBtn.style.display = 'none';
+      questBtn.classList.remove('active');
+    }
+    if (questPanel) questPanel.classList.add('hidden');
+    questListVisible = false;
+    saveQuestListVisible();
+    return;
+  }
+
+  if (questBtn) questBtn.style.display = '';
+  loadQuestListVisible();
+  if (questPanel) {
+    if (questListVisible) {
+      questPanel.classList.remove('hidden');
+      if (questBtn) questBtn.classList.add('active');
+    } else {
+      questPanel.classList.add('hidden');
+      if (questBtn) questBtn.classList.remove('active');
+    }
+  }
+};
+
 // 전투 시작 시 퀘스트 리스트 자동 닫기
 Hooks.on('createCombat', (combat, options, userId) => {
+  if (!game.settings.get('lichsoma-taskbar', 'useQuestList')) return;
+
   const questPanel = document.getElementById('taskbar-quest-list-panel');
   const questBtn = document.querySelector('#taskbar-quest-btn');
   
@@ -377,7 +407,7 @@ window.addQuest = async function() {
   if (!game.user.isGM) return;
   
   const result = await openQuestEditDialog(null);
-  if (!result) return;
+  if (result == null || result === false || result === 'cancel') return;
   
   // 새 퀘스트 생성
   const newQuest = {
@@ -400,10 +430,8 @@ async function openQuestEditDialog(quest) {
   const isEdit = quest !== null;
   const currentTitle = quest ? quest.title : '';
   const currentObjectives = quest ? quest.objectives.map(obj => obj.text) : [''];
-  
-  return await new Promise((resolve) => {
-    // 목표 입력 필드 생성
-    const objectivesHtml = currentObjectives.map((obj, index) => `
+
+  const objectivesHtml = currentObjectives.map((obj, index) => `
       <div class="form-group objective-input-group">
         <label>${game.i18n.localize('Taskbar.QuestObjective')} ${index + 1}</label>
         <div style="display: flex; gap: 4px;">
@@ -412,10 +440,14 @@ async function openQuestEditDialog(quest) {
         </div>
       </div>
     `).join('');
-    
-    const dialog = new Dialog({
-      title: isEdit ? game.i18n.localize('Taskbar.QuestEdit') : game.i18n.localize('Taskbar.QuestAdd'),
-      content: `
+
+  return DialogV2.wait({
+    modal: true,
+    window: {
+      title: isEdit ? game.i18n.localize('Taskbar.QuestEdit') : game.i18n.localize('Taskbar.QuestAdd')
+    },
+    position: { width: 450 },
+    content: `
         <form id="quest-edit-form">
           <div class="form-group">
             <label>${game.i18n.localize('Taskbar.QuestTitle')}</label>
@@ -431,45 +463,42 @@ async function openQuestEditDialog(quest) {
           </div>
         </form>
       `,
-      buttons: {
-        save: {
-          icon: '<i class="fas fa-check"></i>',
-          label: game.i18n.localize('Taskbar.Save'),
-          callback: (html) => {
-            const title = html.find('[name="title"]').val().trim();
-            const objectives = [];
-            
-            // 모든 목표 입력 필드에서 값 가져오기
-            html.find('input[name^="objective"]').each(function() {
-              const value = $(this).val().trim();
-              if (value) {
-                objectives.push(value);
-              }
-            });
-            
-            if (!title || objectives.length === 0) {
-              ui.notifications.warn(game.i18n.localize('Taskbar.QuestMinObjectives'));
-              resolve(null);
-              return;
-            }
-            
-            resolve({ title, objectives });
+    buttons: [
+      {
+        action: 'save',
+        label: game.i18n.localize('Taskbar.Save'),
+        icon: 'fa-solid fa-check',
+        default: true,
+        callback: (event, button, dialog) => {
+          const html = $(dialog.element);
+          const title = html.find('[name="title"]').val().trim();
+          const objectives = [];
+          html.find('input[name^="objective"]').each(function() {
+            const value = $(this).val().trim();
+            if (value) objectives.push(value);
+          });
+          if (!title || objectives.length === 0) {
+            ui.notifications.warn(game.i18n.localize('Taskbar.QuestMinObjectives'));
+            return null;
           }
-        },
-        cancel: {
-          icon: '<i class="fas fa-times"></i>',
-          label: game.i18n.localize('Taskbar.Cancel'),
-          callback: () => resolve(null)
+          return { title, objectives };
         }
       },
-      default: 'save',
-      render: (html) => {
-        let objectiveCount = currentObjectives.length;
-        
-        // 목표 추가 버튼
-        html.find('#add-objective-btn').on('click', () => {
-          objectiveCount++;
-          const newObjectiveHtml = `
+      {
+        action: 'cancel',
+        label: game.i18n.localize('Taskbar.Cancel'),
+        icon: 'fa-solid fa-times',
+        callback: () => null
+      }
+    ],
+    render: (event, dialog) => {
+      if (dialog._lichsomaQuestEditBound) return;
+      dialog._lichsomaQuestEditBound = true;
+      const html = $(dialog.element);
+      let objectiveCount = currentObjectives.length;
+      html.find('#add-objective-btn').on('click', () => {
+        objectiveCount++;
+        const newObjectiveHtml = `
             <div class="form-group objective-input-group">
               <label>${game.i18n.localize('Taskbar.QuestObjective')} ${objectiveCount}</label>
               <div style="display: flex; gap: 4px;">
@@ -478,37 +507,27 @@ async function openQuestEditDialog(quest) {
               </div>
             </div>
           `;
-          html.find('#objectives-container').append(newObjectiveHtml);
-          
-          // 삭제 버튼 이벤트 추가
-          html.find('.remove-objective-btn').off('click').on('click', function() {
-            const group = $(this).closest('.objective-input-group');
-            group.remove();
-            // 라벨 번호 재정렬
-            html.find('.objective-input-group').each(function(index) {
-              $(this).find('label').text(`${game.i18n.localize('Taskbar.QuestObjective')} ${index + 1}`);
-            });
-          });
-        });
-        
-        // 목표 삭제 버튼
-        html.find('.remove-objective-btn').on('click', function() {
+        html.find('#objectives-container').append(newObjectiveHtml);
+        html.find('.remove-objective-btn').off('click').on('click', function() {
           const group = $(this).closest('.objective-input-group');
-          // 최소 1개는 유지
-          if (html.find('.objective-input-group').length <= 1) {
-            ui.notifications.warn(game.i18n.localize('Taskbar.QuestMinObjectives'));
-            return;
-          }
           group.remove();
-          // 라벨 번호 재정렬
           html.find('.objective-input-group').each(function(index) {
             $(this).find('label').text(`${game.i18n.localize('Taskbar.QuestObjective')} ${index + 1}`);
           });
         });
-      }
-    });
-    
-    dialog.render(true);
+      });
+      html.find('.remove-objective-btn').on('click', function() {
+        const group = $(this).closest('.objective-input-group');
+        if (html.find('.objective-input-group').length <= 1) {
+          ui.notifications.warn(game.i18n.localize('Taskbar.QuestMinObjectives'));
+          return;
+        }
+        group.remove();
+        html.find('.objective-input-group').each(function(index) {
+          $(this).find('label').text(`${game.i18n.localize('Taskbar.QuestObjective')} ${index + 1}`);
+        });
+      });
+    }
   });
 }
 
@@ -595,7 +614,7 @@ function createQuestItem(quest) {
       e.preventDefault();
       e.stopPropagation();
       const result = await openQuestEditDialog(quest);
-      if (!result) return;
+      if (result == null || result === false || result === 'cancel') return;
       
       quest.title = result.title;
       // 기존 목표의 상태 유지하면서 텍스트 업데이트
@@ -628,12 +647,12 @@ function createQuestItem(quest) {
     deleteBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const confirmed = await Dialog.confirm({
-        title: game.i18n.localize('Taskbar.QuestDelete'),
-        content: game.i18n.localize('Taskbar.QuestDeleteConfirm'),
-        yes: () => true,
-        no: () => false,
-        defaultYes: false
+      const confirmed = await DialogV2.confirm({
+        modal: true,
+        window: { title: game.i18n.localize('Taskbar.QuestDelete') },
+        content: `<p>${game.i18n.localize('Taskbar.QuestDeleteConfirm')}</p>`,
+        yes: { callback: () => true },
+        no: { default: true, callback: () => false }
       });
       if (confirmed) {
         quests = quests.filter(q => q.id !== quest.id);

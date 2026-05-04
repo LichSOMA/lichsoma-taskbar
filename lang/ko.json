@@ -1,6 +1,4 @@
 {
-    "Taskbar.SettingsHeight": "높이",
-    "Taskbar.SettingsHeightHint": "작업표시줄의 높이를 설정합니다",
     "Taskbar.SettingsColor": "색상",
     "Taskbar.SettingsColorHint": "작업표시줄의 배경 색상을 선택하거나 Hex 코드를 입력하세요",
     "Taskbar.SettingsOpacity": "투명도",
@@ -65,6 +63,12 @@
 
     "Taskbar.Tags": "태그",
     "Taskbar.TagsManagement": "태그 관리",
+    "Taskbar.TagsAdd": "태그 추가",
+    "Taskbar.TagsSave": "태그 저장",
+    "Taskbar.TagsSaved": "태그가 저장되었습니다.",
+
+    "Taskbar.UseQuestList": "퀘스트 리스트 활성화",
+    "Taskbar.UseQuestListHint": "퀘스트 리스트 기능을 활성화 합니다.",
 
     "Taskbar.HideHotbar": "퀵슬롯 숨기기",
     "Taskbar.ShowHotbar": "퀵슬롯 보이기",
@@ -84,7 +88,6 @@
     "Taskbar.TabSettings": "탭 설정",
     "Taskbar.TabName": "탭 이름",
     "Taskbar.TabColor": "탭 색상",
-    "Taskbar.TabColorHint": "색상 선택기 또는 직접 입력 (예: #ffbb00, 투명도 0.5 자동 적용)",
     "Taskbar.NewTab": "새 탭",
     "Taskbar.DeleteTab": "탭 삭제",
     "Taskbar.DeleteTabConfirm": "탭을 삭제하시겠습니까?",
@@ -95,10 +98,8 @@
     "Taskbar.ToggleGrid": "격자 표시 전환",
     "Taskbar.ClearCurrentTab": "현재 탭 초기화",
     "Taskbar.ScreenSizeSettings": "스크린 크기 설정",
-    "Taskbar.ScreenColumns": "가로 칸 수 (Columns)",
-    "Taskbar.ScreenRows": "세로 칸 수 (Rows)",
-    "Taskbar.ScreenColumnsHint": "50px 단위, 최소 10칸 ~ 최대 40칸 (500px ~ 2000px)",
-    "Taskbar.ScreenRowsHint": "50px 단위, 최소 8칸 ~ 최대 24칸 (400px ~ 1200px)",
+    "Taskbar.ScreenColumns": "가로 칸 수",
+    "Taskbar.ScreenRows": "세로 칸 수",
     "Taskbar.ScreenSizeChanged": "스크린 크기 변경",
     "Taskbar.PageSelect": "페이지 선택",
     "Taskbar.Page": "페이지",
@@ -114,6 +115,7 @@
     "Taskbar.Cancel": "취소",
 
     "Taskbar.UserContext.UserSettings": "사용자 설정",
+    "Taskbar.UserContext.CallUser": "호출",
     "Taskbar.UserContext.ViewAvatar": "플레이어 아바타 보기",
     "Taskbar.UserContext.AvatarTitle": "아바타",
     "Taskbar.UserContext.AvatarError": "아바타를 표시할 수 없습니다.",

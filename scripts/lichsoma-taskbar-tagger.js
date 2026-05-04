@@ -1,70 +1,115 @@
 // LichSOMA's Taskbar - Tagger
 
-// 액터 시트에 태그 버튼 추가
-Hooks.on('renderActorSheet', (app, html, data) => {
-  if (!app.actor) return;
-  
-  // 소유자 권한 체크
-  const ownershipLevel = app.actor.ownership[game.userId];
-  if (ownershipLevel !== CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) return;
-  
-  // 헤더에 태그 버튼 추가
-  const windowHeader = html.find('.window-header');
-  if (!windowHeader.length) return;
-  
-  // 이미 버튼이 있으면 추가하지 않음
-  if (windowHeader.find('.actor-tags-button').length) return;
-  
-  // 태그 버튼 생성
-  const tagsButton = $(`
-    <a class="actor-tags-button" title="${game.i18n.localize('Taskbar.TagsManagement')}">
-      <i class="fa-solid fa-tags"></i> ${game.i18n.localize('Taskbar.Tags')}
-    </a>
-  `);
-  
-  // 버튼 클릭 이벤트
-  tagsButton.on('click', () => {
-    openActorTagsDialog(app.actor);
-  });
-  
-  // 닫기 버튼 앞에 추가
-  windowHeader.find('.close').before(tagsButton);
-});
+// FVTT 14 DocumentSheetV2: renderActorSheet / renderItemSheet 만으로는 V2 시트에 훅이 걸리지 않음
+// → renderActorSheetV2 / renderItemSheetV2 동시 구독, 헤더는 header-control + toggleControls 앞 삽입 (lichsoma-actor-emotions.js 와 동일 패턴)
 
-// 아이템 시트에 태그 버튼 추가
-Hooks.on('renderItemSheet', (app, html, data) => {
-  if (!app.item) return;
-  
-  // 소유자 권한 체크
-  const ownershipLevel = app.item.ownership[game.userId];
+function injectActorTagsButton(app, html) {
+  const actor = app.actor || app.object || app.document;
+  if (!actor) return;
+
+  const ownershipLevel = actor.ownership[game.userId];
   if (ownershipLevel !== CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) return;
-  
-  const windowHeader = html.find('.window-header');
+
+  const $root = html?.jquery ? html : $(html);
+  const windowHeader = $root.find('.window-header');
   if (!windowHeader.length) return;
-  
-  // 이미 버튼이 있으면 추가하지 않음
-  if (windowHeader.find('.item-tags-button').length) return;
-  
-  // 태그 버튼 생성
+
+  if (windowHeader.find('.actor-tags-button').length) return;
+
+  const manageTitle = game.i18n.localize('Taskbar.TagsManagement');
+  const tagsLabel = game.i18n.localize('Taskbar.Tags');
   const tagsButton = $(`
-    <a class="item-tags-button" title="${game.i18n.localize('Taskbar.TagsManagement')}">
-      <i class="fa-solid fa-tags"></i> ${game.i18n.localize('Taskbar.Tags')}
-    </a>
+    <button type="button" class="header-control actor-tags-button" title="${manageTitle}" aria-label="${manageTitle}">
+      <i class="fa-solid fa-tags"></i> <span class="label">${tagsLabel}</span>
+    </button>
   `);
-  
-  // 버튼 클릭 이벤트
-  tagsButton.on('click', () => {
-    openItemTagsDialog(app.item);
+
+  const stopDragHandshake = (ev) => {
+    ev.stopPropagation();
+  };
+  tagsButton.on('pointerdown', stopDragHandshake);
+  tagsButton.on('mousedown', stopDragHandshake);
+
+  tagsButton.on('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    openActorTagsDialog(actor);
   });
-  
-  // 닫기 버튼 바로 앞에 추가
-  const closeButton = windowHeader.find('.close');
-  if (closeButton.length) {
-    closeButton.before(tagsButton);
+
+  const toggleBtn = windowHeader.find('button[data-action="toggleControls"]');
+  if (toggleBtn.length) {
+    toggleBtn.first().before(tagsButton);
   } else {
-    windowHeader.append(tagsButton);
+    const title = windowHeader.find('.window-title').first();
+    if (title.length) {
+      title.after(tagsButton);
+    } else {
+      const closeBtn = windowHeader.find('[data-action="close"], .close');
+      if (closeBtn.length) {
+        closeBtn.first().before(tagsButton);
+      } else {
+        windowHeader.prepend(tagsButton);
+      }
+    }
   }
-});
+}
+
+Hooks.on('renderActorSheet', (app, html) => injectActorTagsButton(app, html));
+Hooks.on('renderActorSheetV2', (app, html) => injectActorTagsButton(app, html));
+
+function injectItemTagsButton(app, html) {
+  const item = app.item || app.object || app.document;
+  if (!item) return;
+
+  const ownershipLevel = item.ownership[game.userId];
+  if (ownershipLevel !== CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) return;
+
+  const $root = html?.jquery ? html : $(html);
+  const windowHeader = $root.find('.window-header');
+  if (!windowHeader.length) return;
+
+  if (windowHeader.find('.item-tags-button').length) return;
+
+  const manageTitle = game.i18n.localize('Taskbar.TagsManagement');
+  const tagsLabel = game.i18n.localize('Taskbar.Tags');
+  const tagsButton = $(`
+    <button type="button" class="header-control item-tags-button" title="${manageTitle}" aria-label="${manageTitle}">
+      <i class="fa-solid fa-tags"></i> <span class="label">${tagsLabel}</span>
+    </button>
+  `);
+
+  const stopDragHandshake = (ev) => {
+    ev.stopPropagation();
+  };
+  tagsButton.on('pointerdown', stopDragHandshake);
+  tagsButton.on('mousedown', stopDragHandshake);
+
+  tagsButton.on('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    openItemTagsDialog(item);
+  });
+
+  const toggleBtn = windowHeader.find('button[data-action="toggleControls"]');
+  if (toggleBtn.length) {
+    toggleBtn.first().before(tagsButton);
+  } else {
+    const title = windowHeader.find('.window-title').first();
+    if (title.length) {
+      title.after(tagsButton);
+    } else {
+      const closeBtn = windowHeader.find('[data-action="close"], .close');
+      if (closeBtn.length) {
+        closeBtn.first().before(tagsButton);
+      } else {
+        windowHeader.append(tagsButton);
+      }
+    }
+  }
+}
+
+Hooks.on('renderItemSheet', (app, html) => injectItemTagsButton(app, html));
+Hooks.on('renderItemSheetV2', (app, html) => injectItemTagsButton(app, html));
 
 // 장면 설정에 태그 버튼 추가
 Hooks.on('renderSceneConfig', (app, html, data) => {
@@ -125,84 +170,93 @@ Hooks.on('renderSceneConfig', (app, html, data) => {
 // ============================================
 
 /**
- * 공통 태그 다이얼로그 열기
- * @param {Actor|Item|Scene} document - 태그를 관리할 문서 객체
+ * 태그 다이얼로그 본문 이벤트 (DialogV2 렌더 후)
+ * @param {foundry.applications.api.DialogV2} dialog
+ */
+function attachTagsDialogContentHandlers(dialog) {
+  const $html = $(dialog.element);
+  const $container = $html.find('#tags-container');
+
+  const removeTitle = game.i18n.localize('COMMON.Delete');
+  const placeholder = game.i18n.localize('Taskbar.Tags');
+
+  const addEmptyTagRow = () => {
+    const row = $('<div class="tag-item"></div>');
+    const input = $('<input type="text" class="tag-input" autocomplete="off" />');
+    input.attr('placeholder', placeholder);
+    const rm = $('<button type="button" class="tag-remove-btn"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>');
+    rm.attr('title', removeTitle);
+    rm.attr('aria-label', removeTitle);
+    row.append(input, rm);
+    $container.append(row);
+    input.trigger('focus');
+  };
+
+  $html.find('#tags-dialog-add-btn').on('click', (e) => {
+    e.preventDefault();
+    addEmptyTagRow();
+  });
+
+  $container.on('click', '.tag-remove-btn', function() {
+    $(this).closest('.tag-item').remove();
+  });
+}
+
+/**
+ * 공통 태그 다이얼로그 열기 (DialogV2)
+ * @param {Actor|Item|Scene} doc - 태그를 관리할 문서 객체 (매개변수명을 document로 두면 전역 document와 충돌)
  * @param {string} documentName - 문서 이름
  */
-async function openTagsDialog(document, documentName) {
-  // 현재 태그 가져오기
-  const currentTags = document.getFlag('lichsoma-taskbar', 'tags') || [];
-  
-  // 템플릿 렌더링
-  const content = await renderTemplate('modules/lichsoma-taskbar/templates/tags-dialog.html', {
-    label: game.i18n.localize('Taskbar.Tags'),
-    tags: currentTags
-  });
-  
-  // 현재 태그 상태를 저장하는 헬퍼 함수
-  const saveTags = (html) => {
-    const tags = [];
-    html.find('.tag-item.confirmed').each((i, el) => {
-      const input = $(el).find('.tag-input');
-      const value = input.val().trim();
-      if (value) {
-        tags.push(value);
-      }
-    });
-    
-    // Flag에 저장
-    document.setFlag('lichsoma-taskbar', 'tags', tags);
-  };
-  
-  // 다이얼로그 생성 (버튼 없음)
-  new Dialog({
-    title: `${game.i18n.localize('Taskbar.TagsManagement')}: ${documentName}`,
-    content: content,
-    buttons: {},
-    render: (html) => {
-      const container = html.find('#tags-container');
-      
-      // 새 태그 입력 시 확정된 태그로 변환하고 자동 저장
-      const newTagInput = html.find('.new-tag-input');
-      newTagInput.on('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          e.stopPropagation();
-          const value = newTagInput.val().trim();
-          if (value) {
-            // 새 확정 태그 추가
-            const newTagItem = $(`
-              <div class="tag-item confirmed">
-                <input type="text" class="tag-input" value="${value}" readonly />
-                <button type="button" class="tag-remove-btn" title="Remove">×</button>
-              </div>
-            `);
-            
-            // 삭제 버튼 이벤트 (삭제 시 자동 저장)
-            newTagItem.find('.tag-remove-btn').on('click', function() {
-              newTagItem.remove();
-              saveTags(html);
-            });
-            
-            // new-tag 앞에 추가
-            html.find('.new-tag').before(newTagItem);
-            newTagInput.val('');
-            
-            // 자동 저장
-            saveTags(html);
-          }
-        }
-      });
-      
-      // 기존 태그의 삭제 버튼 이벤트 (삭제 시 자동 저장)
-      html.find('.tag-item.confirmed .tag-remove-btn').on('click', function() {
-        $(this).closest('.tag-item').remove();
-        saveTags(html);
-      });
+async function openTagsDialog(doc, documentName) {
+  const currentTags = doc.getFlag('lichsoma-taskbar', 'tags') || [];
+
+  const contentHtml = await foundry.applications.handlebars.renderTemplate(
+    'modules/lichsoma-taskbar/templates/tags-dialog.html',
+    {
+      headerTitle: game.i18n.localize('Taskbar.TagsManagement'),
+      tagsAddLabel: game.i18n.localize('Taskbar.TagsAdd'),
+      removeLabel: game.i18n.localize('COMMON.Delete'),
+      tagPlaceholder: game.i18n.localize('Taskbar.Tags'),
+      tags: currentTags
     }
-  }, {
-    width: 400
-  }).render(true);
+  );
+
+  const contentDiv = document.createElement('div');
+  contentDiv.innerHTML = contentHtml;
+
+  const DialogV2 = foundry.applications.api.DialogV2;
+  const dlg = new DialogV2({
+    id: `lichsoma-taskbar-tags-${foundry.utils.randomID()}`,
+    window: {
+      title: `${game.i18n.localize('Taskbar.TagsManagement')}: ${documentName}`
+    },
+    position: { width: 400 },
+    content: contentDiv,
+    buttons: [{
+      action: 'save',
+      label: 'Taskbar.TagsSave',
+      icon: 'fa-solid fa-floppy-disk',
+      default: true
+    }],
+    submit: async (result, dialog) => {
+      if (result === 'save') {
+        const tags = [];
+        $(dialog.element).find('.tags-dialog .tag-item .tag-input').each((_, el) => {
+          const v = $(el).val().trim();
+          if (v) tags.push(v);
+        });
+        await doc.setFlag('lichsoma-taskbar', 'tags', tags);
+        ui.notifications.info(game.i18n.localize('Taskbar.TagsSaved'));
+      }
+    },
+    form: { closeOnSubmit: true }
+  });
+
+  dlg.addEventListener('render', () => {
+    attachTagsDialogContentHandlers(dlg);
+  }, { once: true });
+
+  await dlg.render({ force: true });
 }
 
 // ============================================

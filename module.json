@@ -2,11 +2,10 @@
     "id": "lichsoma-taskbar",
     "title": "LichSOMA's Taskbar",
     "description": "A taskbar module for Foundry VTT",
-    "version": "1.0.1",
+    "version": "2.0.0",
     "compatibility": {
-      "minimum": "13",
-      "verified": "13",
-      "maximum": "13"
+      "minimum": "14",
+      "verified": "14"
     },
     "authors": [
       {
@@ -40,7 +39,7 @@
     "socket": true,
     "url": "https://github.com/LichSOMA/lichsoma-taskbar",
     "manifest": "https://github.com/LichSOMA/lichsoma-taskbar/releases/latest/download/module.json",
-    "download": "https://github.com/LichSOMA/lichsoma-taskbar/releases/download/1.0.1/lichsoma-taskbar.zip",
+    "download": "https://github.com/LichSOMA/lichsoma-taskbar/releases/download/2.0.0/lichsoma-taskbar.zip",
     "license": "https://github.com/LichSOMA/lichsoma-taskbar/blob/main/LICENSE",
     "readme": "https://github.com/LichSOMA/lichsoma-taskbar/blob/main/README.md"
   }

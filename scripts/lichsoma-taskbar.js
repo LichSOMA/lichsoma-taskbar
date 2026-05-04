@@ -1,15 +1,14 @@
 // LichSOMA's Taskbar Script
 
+const DialogV2 = foundry.applications.api.DialogV2;
+
 // 윈도우 순서 저장
 let windowOrder = [];
 let draggedButton = null;
+/** 유저 호출 메시지: 움직임 감지 후 지연 사라짐·리스너 정리용 */
+let userCallDismissTimeout = null;
+let userCallInteractionAbort = null;
 const BASE_WINDOW_SELECTORS = ['.application', '.window-app', '.sidebar-popout', 'dialog.application', 'dialog.dialog'];
-const CUSTOM_WINDOW_SELECTORS = [
-  '.lichsoma-emotion-manager-window',
-  '.lichsoma-grid-window-open',
-  '.lichsoma-actor-grid-window',
-  '.lichsoma-chat-log-archive-window'
-];
 
 // localStorage에서 순서 불러오기
 function loadWindowOrder() {
@@ -248,13 +247,19 @@ function createTaskbar() {
         <i class="fa-solid fa-gears"></i>
       </button>
       <div class="taskbar-stats">
-        <div class="taskbar-stat">
-          <span class="stat-label">${game.i18n.localize('Taskbar.Stats.Latency')}</span>
-          <span class="stat-value" id="taskbar-latency">--</span>
+        <div class="taskbar-stats-perf" id="taskbar-stats-perf">
+          <div class="taskbar-stat">
+            <span class="stat-label">${game.i18n.localize('Taskbar.Stats.Latency')}</span>
+            <span class="stat-value" id="taskbar-latency">--</span>
+          </div>
+          <div class="taskbar-stat">
+            <span class="stat-label">${game.i18n.localize('Taskbar.Stats.FPS')}</span>
+            <span class="stat-value" id="taskbar-fps">--</span>
+          </div>
         </div>
-        <div class="taskbar-stat">
-          <span class="stat-label">${game.i18n.localize('Taskbar.Stats.FPS')}</span>
-          <span class="stat-value" id="taskbar-fps">--</span>
+        <div class="taskbar-stats-datetime" id="taskbar-stats-datetime" style="display:none;">
+          <div class="taskbar-datetime-line" id="taskbar-datetime-date">--/--/--</div>
+          <div class="taskbar-datetime-line" id="taskbar-datetime-time">--</div>
         </div>
       </div>
     </div>
@@ -284,9 +289,20 @@ function createTaskbar() {
     window.createScreenPanel();
   }
   
-  // 퀘스트 패널 생성
+  // 퀘스트 패널 생성 (실패해도 테스크바·윈도우 감지 훅은 반드시 등록되도록 분리)
   if (typeof window.createQuestListPanel === 'function') {
-    window.createQuestListPanel();
+    try {
+      window.createQuestListPanel();
+    } catch (err) {
+      console.error('lichsoma-taskbar | createQuestListPanel failed:', err);
+    }
+  }
+  if (typeof window.applyQuestListSetting === 'function') {
+    try {
+      window.applyQuestListSetting();
+    } catch (err) {
+      console.error('lichsoma-taskbar | applyQuestListSetting failed:', err);
+    }
   }
   
   // 플레이어 버튼 클릭 이벤트
@@ -430,7 +446,7 @@ function createTaskbar() {
     setTimeout(() => updateTaskbarWindows(), 10);
   }, { capture: true }); // capture phase에서 먼저 가로채기
   
-  // 윈도우가 렌더링될 때마다 업데이트
+  // 윈도우가 렌더링될 때마다 업데이트 (Application V1)
   Hooks.on('renderApplication', (app, html, data) => {
     if (isTrackableWindow(app)) {
       setTimeout(() => updateTaskbarWindows(), 50);
@@ -439,10 +455,19 @@ function createTaskbar() {
       replaceHeaderDoubleClick(app, html);
     }
   });
+
+  // Application V2 (DocumentSheetV2, DialogV2 등) — V1용 renderApplication 훅이 호출되지 않음
+  Hooks.on('renderApplicationV2', (application, element, context, options) => {
+    if (isTrackableWindow(application)) {
+      setTimeout(() => updateTaskbarWindows(), 50);
+      replaceHeaderDoubleClick(application, element);
+    }
+  });
   
   // 여러 가지 닫기 훅 시도
   const closeHooks = [
     'closeApplication',
+    'closeApplicationV2',
     'closeActorSheet', 
     'closeItemSheet'
   ];
@@ -456,13 +481,11 @@ function createTaskbar() {
   // MutationObserver로 윈도우 추가/제거/스타일 변화 감지
   const observer = new MutationObserver((mutations) => {
     let shouldUpdate = false;
-    const newlyAddedElements = [];
     
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
         if (node.nodeType === 1 && isTrackedWindowElement(node)) {
           shouldUpdate = true;
-          newlyAddedElements.push(node);
         }
       });
       
@@ -472,7 +495,7 @@ function createTaskbar() {
         }
       });
       
-      if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+      if (mutation.type === 'attributes' && (mutation.attributeName === 'style' || mutation.attributeName === 'open')) {
         const target = mutation.target;
         if (isTrackedWindowElement(target)) {
           shouldUpdate = true;
@@ -480,22 +503,8 @@ function createTaskbar() {
       }
     });
     
-    // 새로 추가된 요소들에 z-index 설정
-    if (newlyAddedElements.length > 0) {
-      setTimeout(() => {
-        newlyAddedElements.forEach((element) => {
-          // dialog 요소는 open 속성으로 확인
-          const isVisible = element.tagName === 'DIALOG' 
-            ? element.hasAttribute('open')
-            : element.style.display !== 'none';
-          
-          if (!isVisible) return;
-          
-          // 새로 열린 윈도우는 항상 최상단으로 올리기
-          bringElementToTop(element);
-        });
-      }, 50);
-    }
+    // 새로 추가된 윈도우는 Foundry가 z-order/포커스를 관리하므로 여기서 bringToFront 하지 않음.
+    // (재렌더로 DOM이 바뀔 때 '새 창'으로 오인해 순서가 뒤섞이는 문제 방지)
     
     if (shouldUpdate) {
       // ui.windows 업데이트를 기다리기 위해 충분한 지연
@@ -509,7 +518,7 @@ function createTaskbar() {
     childList: true, 
     subtree: true,
     attributes: true,
-    attributeFilter: ['style', 'class']
+    attributeFilter: ['style', 'class', 'open']
   });
   
   // 표준 훅도 등록
@@ -624,8 +633,21 @@ function getAppElement(app) {
   return element;
 }
 
+/** DOM 요소에 대응하는 Foundry Application이 있으면 반환 (V1/V2 공통, ui.windows 기준) */
+function findApplicationForElement(element) {
+  if (!element || !ui?.windows) return null;
+  for (const app of Object.values(ui.windows)) {
+    if (!app?.rendered) continue;
+    const el = getAppElement(app);
+    if (el && (el === element || el.contains(element))) {
+      return app;
+    }
+  }
+  return null;
+}
+
 function getTrackedWindowSelector() {
-  const selectors = [...BASE_WINDOW_SELECTORS, ...CUSTOM_WINDOW_SELECTORS].filter(Boolean);
+  const selectors = [...BASE_WINDOW_SELECTORS].filter(Boolean);
   return selectors.join(', ');
 }
 
@@ -652,28 +674,8 @@ function getElementIdentifier(element) {
   return generated;
 }
 
-function getCustomWindowTitle(element) {
-  if (!element) return null;
-  if (element.classList.contains('lichsoma-emotion-manager-window')) {
-    const titleEl = element.querySelector('.lichsoma-emotion-manager-title');
-    const title = titleEl?.textContent?.trim();
-    if (title) return title;
-  }
-  const gridHeader = element.querySelector('.lichsoma-grid-window-header h3');
-  if (gridHeader) {
-    const title = gridHeader.textContent?.trim();
-    if (title) return title;
-  }
-  return null;
-}
-
 function getElementDisplayName(element, fallbackId) {
   if (!element) return fallbackId || '';
-  const customTitle = getCustomWindowTitle(element);
-  if (customTitle) {
-    element.setAttribute('data-window-title', customTitle);
-    return customTitle;
-  }
   const stored = element.getAttribute('data-window-title');
   if (stored) return stored;
   const titleEl = element.querySelector('.window-title');
@@ -717,25 +719,14 @@ function updateTaskbarWindows() {
     // 제외 목록 체크
     const elementId = getElementIdentifier(el);
     if (elementId && excludeIds.includes(elementId)) return false;
-    // taskbar 관련 요소 제외
-    if (el.id?.includes('taskbar')) return false;
     return true;
   });
   
-  // 새로 열린 윈도우를 windowOrder에 추가하고 z-index 설정
+  // 새로 열린 윈도우를 windowOrder에만 추가 (z-order는 Foundry·사용자 클릭에 맡김)
   windowElements.forEach(element => {
     const id = getElementIdentifier(element);
     if (id && !windowOrder.includes(id)) {
       windowOrder.push(id);
-      
-      // 새로 열린 윈도우는 항상 최상단으로 올리기 (dialog 요소는 open 속성으로 확인)
-      const isVisible = element.tagName === 'DIALOG' 
-        ? element.hasAttribute('open')
-        : element.style.display !== 'none';
-      
-      if (isVisible) {
-        bringElementToTop(element);
-      }
     }
   });
   
@@ -780,69 +771,8 @@ function createWindowButtonFromElement(container, element) {
   
   // 제목 가져오기
   const name = getElementDisplayName(element, elementId);
-  
-  // 아이콘 결정
-  let icon = 'fa-solid fa-file';
-  const idKey = (elementId || '').toLowerCase();
-  const classes = Array.from(element.classList || []);
-  
-  // window-icon에서 아이콘 클래스 가져오기
-  const iconElement = element.querySelector('.window-icon');
-  
-  if (iconElement && !iconElement.classList.contains('hidden')) {
-    // fa-로 시작하는 클래스들 찾기
-    const iconClasses = Array.from(iconElement.classList).filter(c => c.startsWith('fa-'));
-    if (iconClasses.length > 0) {
-      icon = iconClasses.join(' ');
-    }
-  }
-  
-  // ID로 타입 추측
-  if (!iconElement || icon === 'fa-solid fa-file') {
-    if (classes.includes('lichsoma-emotion-manager-window')) {
-      icon = 'fa-solid fa-face-smile';
-    } else if (classes.includes('lichsoma-actor-grid-window')) {
-      icon = 'fa-solid fa-masks-theater';
-    } else if (classes.includes('lichsoma-chat-log-archive-window')) {
-      icon = 'fa-solid fa-scroll';
-    } else if (classes.includes('lichsoma-grid-window-open')) {
-      icon = 'fa-solid fa-border-all';
-    } else if (idKey.includes('actorsheet')) {
-      icon = 'fa-solid fa-user';
-    } else if (idKey.includes('itemsheet')) {
-      icon = 'fa-solid fa-suitcase';
-    } else if (idKey.includes('journalentry')) {
-      icon = 'fa-solid fa-book-open';
-    } else if (idKey.includes('rolltable')) {
-      icon = 'fa-solid fa-table-list';
-    } else if (idKey.includes('carddeck')) {
-      icon = 'fa-solid fa-cards';
-    } else if (idKey.includes('macro')) {
-      icon = 'fa-solid fa-code';
-    } else if (idKey.includes('playlist')) {
-      icon = 'fa-solid fa-music';
-    } else if (idKey.includes('scene')) {
-      icon = 'fa-solid fa-map';
-    } else if (idKey.includes('settings')) {
-      icon = 'fa-solid fa-gears';
-    } else if (idKey.includes('module')) {
-      icon = 'fa-solid fa-cube';
-    } else if (idKey.includes('popout')) {
-      // 팝아웃별 아이콘
-      if (idKey.includes('scenes')) icon = 'fa-solid fa-map';
-      else if (idKey.includes('actors')) icon = 'fa-solid fa-user';
-      else if (idKey.includes('items')) icon = 'fa-solid fa-suitcase';
-      else if (idKey.includes('journal')) icon = 'fa-solid fa-book-open';
-      else if (idKey.includes('tables')) icon = 'fa-solid fa-table-list';
-      else if (idKey.includes('cards')) icon = 'fa-solid fa-cards';
-      else if (idKey.includes('macros')) icon = 'fa-solid fa-code';
-      else if (idKey.includes('playlists')) icon = 'fa-solid fa-music';
-      else if (idKey.includes('compendium')) icon = 'fa-solid fa-book-atlas';
-    }
-  }
-  
+
   button.innerHTML = `
-    <i class="${icon}"></i>
     <span class="window-name">${name}</span>
   `;
   
@@ -915,6 +845,12 @@ function getElementZIndex(element) {
 // Element를 최상단으로
 function bringElementToTop(element) {
   if (!element) return;
+
+  const app = findApplicationForElement(element);
+  if (app && typeof app.bringToFront === 'function') {
+    app.bringToFront();
+    return;
+  }
   
   // 현재 모든 윈도우 중 최대 z-index 찾기
   let maxZ = 0;
@@ -947,17 +883,20 @@ function bringElementToTop(element) {
     if (z > maxZ) maxZ = z;
   });
   
-  // 현재 z-index가 999 이하인 경우에만 조정 (9999 이상은 고정된 다이얼로그)
   const currentZIndex = getElementZIndex(element);
-  if (currentZIndex <= 999) {
-    // 최대값 + 1로 설정 (최소값 100 보장, 최대값 999 제한)
-    element.style.zIndex = Math.min(Math.max(maxZ + 1, 100), 999);
-  }
+  // 9999 이상은 고정 오버레이 등으로 보고 건드리지 않음
+  if (currentZIndex >= 9999) return;
+  element.style.zIndex = Math.max(maxZ + 1, 100);
 }
 
 // Element가 최상단인지 확인
 function checkIfElementOnTop(element) {
   if (!element) return false;
+
+  const app = findApplicationForElement(element);
+  if (app && typeof app.bringToFront === 'function') {
+    return checkIfOnTop(app);
+  }
   
   const currentZIndex = getElementZIndex(element);
   
@@ -1016,39 +955,10 @@ function createWindowButton(container, app) {
     button.classList.add('minimized');
   }
   
-  // 아이콘과 이름 표시
-  let icon = 'fa-solid fa-file';
-  let name = app.title || 'Unknown';
-  
-  // documentName으로 타입 판단
-  if (app.object?.documentName === 'Actor') {
-    icon = 'fa-solid fa-user';
-    name = app.object.name || app.title;
-  } else if (app.object?.documentName === 'Item') {
-    icon = 'fa-solid fa-suitcase';
-    name = app.object.name || app.title;
-  } else if (app.object?.documentName === 'JournalEntry') {
-    icon = 'fa-solid fa-book-open';
-    name = app.object.name || app.title;
-  } else if (app.object?.documentName === 'RollTable') {
-    icon = 'fa-solid fa-table-list';
-    name = app.object.name || app.title;
-  } else if (app.object?.documentName === 'Cards') {
-    icon = 'fa-solid fa-cards';
-    name = app.object.name || app.title;
-  } else if (app.object?.documentName === 'Macro') {
-    icon = 'fa-solid fa-code';
-    name = app.object.name || app.title;
-  } else if (app.object?.documentName === 'Playlist') {
-    icon = 'fa-solid fa-music';
-    name = app.object.name || app.title;
-  } else if (app.object?.documentName === 'Scene') {
-    icon = 'fa-solid fa-map';
-    name = app.object.name || app.title;
-  }
+  // 이름 표시
+  const name = app.title || 'Unknown';
   
   button.innerHTML = `
-    <i class="${icon}"></i>
     <span class="window-name">${name}</span>
   `;
   
@@ -1102,44 +1012,8 @@ function createPopoutButton(container, element) {
   
   // 제목 가져오기
   const name = getElementDisplayName(element, elementId);
-  
-  // 아이콘 설정
-  let icon = 'fa-solid fa-file';
-  const idKey = (elementId || '').toLowerCase();
-  const classes = Array.from(element.classList || []);
-  
-  if (classes.includes('lichsoma-emotion-manager-window')) {
-    icon = 'fa-solid fa-face-smile';
-  } else if (classes.includes('lichsoma-actor-grid-window')) {
-    icon = 'fa-solid fa-masks-theater';
-  } else if (classes.includes('lichsoma-chat-log-archive-window')) {
-    icon = 'fa-solid fa-scroll';
-  } else if (classes.includes('lichsoma-grid-window-open')) {
-    icon = 'fa-solid fa-border-all';
-  } else if (idKey.includes('scenes')) {
-    icon = 'fa-solid fa-map';
-  } else if (idKey.includes('actors')) {
-    icon = 'fa-solid fa-user';
-  } else if (idKey.includes('items')) {
-    icon = 'fa-solid fa-suitcase';
-  } else if (idKey.includes('journal')) {
-    icon = 'fa-solid fa-book-open';
-  } else if (idKey.includes('tables')) {
-    icon = 'fa-solid fa-table-list';
-  } else if (idKey.includes('cards')) {
-    icon = 'fa-solid fa-cards';
-  } else if (idKey.includes('macros')) {
-    icon = 'fa-solid fa-code';
-  } else if (idKey.includes('playlists')) {
-    icon = 'fa-solid fa-music';
-  } else if (idKey.includes('compendium')) {
-    icon = 'fa-solid fa-book-atlas';
-  } else if (idKey.includes('settings')) {
-    icon = 'fa-solid fa-gears';
-  }
-  
+
   button.innerHTML = `
-    <i class="${icon}"></i>
     <span class="window-name">${name}</span>
   `;
   
@@ -1248,20 +1122,165 @@ function hideWindow(app) {
 }
 
 function updatePerformanceStats() {
+  const perfWrap = document.getElementById('taskbar-stats-perf');
+  const dateWrap = document.getElementById('taskbar-stats-datetime');
+
+  // lichsoma-daily-calendar: enableCalendar가 켜진 경우에만 날짜 슬롯 사용
+  const ldcActive = Boolean(game.modules.get('lichsoma-daily-calendar')?.active);
+  const ldcShowDate = ldcActive
+    && Boolean(game.settings.get('lichsoma-daily-calendar', 'enableCalendar'));
+  const ltwActive = Boolean(game.modules.get('lichsoma-time-and-weather')?.active);
+
+  let showDate = false;
+  if (ldcShowDate) {
+    showDate = true;
+  } else if (ltwActive) {
+    showDate = Boolean(game.settings.get('lichsoma-time-and-weather', 'enableCalendar'))
+      && Boolean(game.settings.get('lichsoma-time-and-weather', 'taskbarShowDate'));
+  }
+
+  if (showDate) {
+    if (perfWrap) perfWrap.style.display = 'none';
+    if (dateWrap) dateWrap.style.display = '';
+    updateTaskbarDateTime();
+    return;
+  }
+
+  if (perfWrap) perfWrap.style.display = '';
+  if (dateWrap) dateWrap.style.display = 'none';
+
   // DOM에서 직접 지연 시간과 FPS 가져오기
   const latencyElement = document.querySelector('#latency .average');
   const fpsElement = document.querySelector('#fps .average');
-  
+
   const taskbarLatency = document.getElementById('taskbar-latency');
   const taskbarFps = document.getElementById('taskbar-fps');
-  
+
   if (taskbarLatency && latencyElement) {
     taskbarLatency.textContent = latencyElement.textContent;
   }
-  
+
   if (taskbarFps && fpsElement) {
     taskbarFps.textContent = fpsElement.textContent;
   }
+}
+
+Hooks.on('lichsomaDailyCalendarRefreshTaskbarStats', () => {
+  try {
+    updatePerformanceStats();
+  } catch (e) {
+    // ignore
+  }
+});
+
+function updateTaskbarDateTime() {
+  const dateEl = document.getElementById('taskbar-datetime-date');
+  const timeEl = document.getElementById('taskbar-datetime-time');
+  if (!dateEl || !timeEl) return;
+
+  // lichsoma-daily-calendar(캘린더 ON) 우선, 없으면 lichsoma-time-and-weather(레거시)
+  const ldcCalOn = Boolean(game.modules.get('lichsoma-daily-calendar')?.active)
+    && Boolean(game.settings.get('lichsoma-daily-calendar', 'enableCalendar'));
+  const sourceId = ldcCalOn ? 'lichsoma-daily-calendar' : 'lichsoma-time-and-weather';
+
+  const baseStr = game.settings.get(sourceId, 'baseCalendarDate');
+  const day = Math.max(1, Number(game.settings.get(sourceId, 'currentDay')) || 1);
+  const timeOfDay = game.settings.get(sourceId, 'timeOfDay') || 'morning';
+
+  const base = parseBaseDateForTaskbar(baseStr);
+  const computed = base ? addDaysToDateForTaskbar(base, day - 1) : null;
+  const dateStr = computed ? formatYYMMDDForTaskbar(computed) : '??/??/??';
+  const weekday = computed ? getWeekdayKoreanForTaskbar(toUtcDateForTaskbar(computed)) : '';
+
+  const timeLabel =
+    timeOfDay === 'morning' ? '오전'
+      : timeOfDay === 'afternoon' ? '오후'
+        : timeOfDay === 'latenight' ? '심야'
+          : '';
+
+  dateEl.textContent = dateStr;
+  timeEl.textContent = `${weekday}${weekday ? ' ' : ''}${timeLabel}`.trim();
+}
+
+function parseBaseDateForTaskbar(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  const m = /^(\d{4})\s*\/\s*(\d{2})\s*\/\s*(\d{2})$/.exec(trimmed);
+  if (!m) return null;
+  const yy = Number(m[1]);
+  const mm = Number(m[2]);
+  const dd = Number(m[3]);
+  if (!Number.isInteger(yy) || !Number.isInteger(mm) || !Number.isInteger(dd)) return null;
+  if (yy < 1) return null;
+  if (mm < 1 || mm > 12) return null;
+  const dim = getDaysInMonthForTaskbar(yy, mm);
+  if (dd < 1 || dd > dim) return null;
+  return { yy, mm, dd };
+}
+
+function getDaysInMonthForTaskbar(yy, mm) {
+  const fullYear = Number(yy);
+  const isLeap = (fullYear % 4 === 0 && fullYear % 100 !== 0) || fullYear % 400 === 0;
+  switch (mm) {
+    case 1: return 31;
+    case 2: return isLeap ? 29 : 28;
+    case 3: return 31;
+    case 4: return 30;
+    case 5: return 31;
+    case 6: return 30;
+    case 7: return 31;
+    case 8: return 31;
+    case 9: return 30;
+    case 10: return 31;
+    case 11: return 30;
+    case 12: return 31;
+    default: return 30;
+  }
+}
+
+function addDaysToDateForTaskbar({ yy, mm, dd }, offsetDays) {
+  let y = yy;
+  let m = mm;
+  let d = dd;
+  let remaining = Number(offsetDays) || 0;
+  while (remaining !== 0) {
+    if (remaining > 0) {
+      const dim = getDaysInMonthForTaskbar(y, m);
+      if (d < dim) d += 1;
+      else {
+        d = 1;
+        if (m < 12) m += 1;
+        else { m = 1; y = y + 1; }
+      }
+      remaining -= 1;
+    } else {
+      if (d > 1) d -= 1;
+      else {
+        if (m > 1) m -= 1;
+        else { m = 12; y = y - 1; }
+        d = getDaysInMonthForTaskbar(y, m);
+      }
+      remaining += 1;
+    }
+  }
+  return { yy: y, mm: m, dd: d };
+}
+
+function pad2ForTaskbar(n) {
+  return String(n).padStart(2, '0');
+}
+
+function formatYYMMDDForTaskbar({ yy, mm, dd }) {
+  return `${String(yy).padStart(4, '0')}/${pad2ForTaskbar(mm)}/${pad2ForTaskbar(dd)}`;
+}
+
+function toUtcDateForTaskbar({ yy, mm, dd }) {
+  return new Date(Date.UTC(Number(yy), (mm - 1), dd, 12, 0, 0));
+}
+
+function getWeekdayKoreanForTaskbar(date) {
+  const labels = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+  return labels[date.getUTCDay()] ?? '';
 }
 
 // 보이는 윈도우가 있는지 확인
@@ -1274,7 +1293,6 @@ function checkAnyWindowVisible() {
   for (let element of allWindowElements) {
     const elementId = getElementIdentifier(element);
     if (elementId && excludeIds.includes(elementId)) continue;
-    if (element.id?.includes('taskbar')) continue;
     // dialog 요소의 경우 open 속성으로 보이는지 확인
     if (element.tagName === 'DIALOG') {
       if (element.hasAttribute('open')) {
@@ -1301,7 +1319,6 @@ function hideAllWindows() {
   allWindowElements.forEach(element => {
     const elementId = getElementIdentifier(element);
     if (elementId && excludeIds.includes(elementId)) return;
-    if (element.id?.includes('taskbar')) return;
     
     // dialog 요소의 경우 close() 메서드로 닫기
     if (element.tagName === 'DIALOG' && element.hasAttribute('open')) {
@@ -1330,7 +1347,6 @@ function showAllWindows() {
   allWindowElements.forEach(element => {
     const elementId = getElementIdentifier(element);
     if (elementId && excludeIds.includes(elementId)) return;
-    if (element.id?.includes('taskbar')) return;
     
     // dialog 요소의 경우 showModal() 또는 show() 메서드로 열기
     if (element.tagName === 'DIALOG' && !element.hasAttribute('open')) {
@@ -1357,7 +1373,6 @@ function closeAllWindows() {
   const windowElements = Array.from(allWindowElements).filter(el => {
     const elementId = getElementIdentifier(el);
     if (elementId && excludeIds.includes(elementId)) return false;
-    if (el.id?.includes('taskbar')) return false;
     return true;
   });
   
@@ -1368,20 +1383,20 @@ function closeAllWindows() {
     return;
   }
   
-  Dialog.confirm({
-    title: '모든 윈도우 닫기',
+  void DialogV2.confirm({
+    modal: true,
+    window: { title: '모든 윈도우 닫기' },
     content: `<p>열려있는 ${totalCount}개의 윈도우를 모두 닫으시겠습니까?</p>`,
-    yes: () => {
-      // 모든 윈도우 닫기
-      windowElements.forEach(element => {
-        const closeBtn = element.querySelector('.header-control[data-action="close"]');
-        if (closeBtn) {
-          closeBtn.click();
-        }
-      });
+    yes: {
+      callback: () => {
+        windowElements.forEach(element => {
+          const closeBtn = element.querySelector('.header-control[data-action="close"]');
+          if (closeBtn) closeBtn.click();
+        });
+        return true;
+      }
     },
-    no: () => {},
-    defaultYes: false
+    no: { default: true, callback: () => false }
   });
 }
 
@@ -1497,6 +1512,23 @@ function togglePlayerList(playersBtn) {
     playerPanel.classList.add('hidden');
     if (playersBtn) playersBtn.classList.remove('active');
   }
+}
+
+/**
+ * 플레이어 목록 우클릭 → 호출: 조건이 맞을 때만 callUser
+ */
+function invokeUserCallIfAllowed(user) {
+  if (!user) return;
+  if (user.id === game.user.id) return;
+  if (!user.active) {
+    ui.notifications.warn(game.i18n.localize('Taskbar.UserCall.OfflineWarning'));
+    return;
+  }
+  const allowPlayerCall = game.settings.get('lichsoma-taskbar', 'allowPlayerCall');
+  if (!game.user.isGM && !allowPlayerCall) {
+    return;
+  }
+  callUser(user);
 }
 
 function updatePlayerList() {
@@ -1622,30 +1654,6 @@ function updatePlayerList() {
       ${user.isGM ? '<span class="player-gm-tag">GM</span>' : ''}
     `;
     
-    // 더블클릭 이벤트: 유저 호출
-    userItem.addEventListener('dblclick', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // 자기 자신은 호출 불가
-      if (user.id === game.user.id) return;
-      
-      // 오프라인 유저는 호출 불가
-      if (!user.active) {
-        ui.notifications.warn(game.i18n.localize('Taskbar.UserCall.OfflineWarning'));
-        return;
-      }
-      
-      // 권한 체크: GM은 항상 가능, 플레이어는 설정에 따라
-      const allowPlayerCall = game.settings.get('lichsoma-taskbar', 'allowPlayerCall');
-      if (!game.user.isGM && !allowPlayerCall) {
-        return;
-      }
-      
-      // 유저 호출
-      callUser(user);
-    });
-    
     // 우클릭 이벤트: FoundryVTT 기본 유저 컨텍스트 메뉴 표시
     userItem.addEventListener('contextmenu', (e) => {
       e.preventDefault();
@@ -1707,6 +1715,18 @@ function showUserContextMenu(event, user) {
   });
   menu.appendChild(avatarItem);
   
+  // 유저 호출 (GM 또는 '플레이어 간 호출' 허용 시, 본인 제외)
+  if (user.id !== game.user.id && (game.user.isGM || game.settings.get('lichsoma-taskbar', 'allowPlayerCall'))) {
+    const callItem = document.createElement('li');
+    callItem.className = 'context-item';
+    callItem.innerHTML = `<i class="fa-solid fa-bell fa-fw"></i><span>${game.i18n.localize('Taskbar.UserContext.CallUser')}</span>`;
+    callItem.addEventListener('click', () => {
+      invokeUserCallIfAllowed(user);
+      contextMenu.remove();
+    });
+    menu.appendChild(callItem);
+  }
+  
   // 할당된 캐릭터 시트 열기 (캐릭터가 할당된 경우만)
   if (user.character) {
     const characterItem = document.createElement('li');
@@ -1749,12 +1769,12 @@ function showUserContextMenu(event, user) {
     kickItem.addEventListener('click', async () => {
       const kickTitle = game.i18n.localize('Taskbar.UserContext.KickPlayerTitle');
       const kickConfirm = game.i18n.format('Taskbar.UserContext.KickPlayerConfirm', { name: user.name });
-      const confirmed = await Dialog.confirm({
-        title: kickTitle,
-        content: kickConfirm,
-        yes: () => true,
-        no: () => false,
-        defaultYes: false
+      const confirmed = await DialogV2.confirm({
+        modal: true,
+        window: { title: kickTitle },
+        content: `<p>${kickConfirm}</p>`,
+        yes: { callback: () => true },
+        no: { default: true, callback: () => false }
       });
       
       if (confirmed) {
@@ -1776,12 +1796,12 @@ function showUserContextMenu(event, user) {
       banItem.addEventListener('click', async () => {
         const banTitle = game.i18n.localize('Taskbar.UserContext.BanPlayerTitle');
         const banConfirm = game.i18n.format('Taskbar.UserContext.BanPlayerConfirm', { name: user.name });
-        const confirmed = await Dialog.confirm({
-          title: banTitle,
-          content: banConfirm,
-          yes: () => true,
-          no: () => false,
-          defaultYes: false
+        const confirmed = await DialogV2.confirm({
+          modal: true,
+          window: { title: banTitle },
+          content: `<p>${banConfirm}</p>`,
+          yes: { callback: () => true },
+          no: { default: true, callback: () => false }
         });
         
         if (confirmed) {
@@ -1955,6 +1975,62 @@ function replaceHeaderDoubleClick(app, html) {
 // ============================================
 
 /**
+ * User 또는 색상 값을 플레이어 목록 점(user.color)과 동일한 #rrggbb 로 맞춤
+ * @param {string|number|{ color?: string|number }|undefined} value
+ * @param {string} [fallback='#ff6600']
+ */
+function resolveUserColorToHex(value, fallback = '#ff6600') {
+  if (value == null) return fallback;
+  let c;
+  if (typeof value === 'object' && value !== null && 'color' in value) {
+    c = value.color;
+  } else {
+    c = value;
+  }
+  if (c == null || c === '') return fallback;
+  if (typeof c === 'number') {
+    return `#${(c & 0xffffff).toString(16).padStart(6, '0')}`;
+  }
+  const colorStr = String(c).trim();
+  if (colorStr.startsWith('#')) {
+    if (colorStr.length === 7) return colorStr.toLowerCase();
+    if (colorStr.length === 4) {
+      const r = colorStr[1];
+      const g = colorStr[2];
+      const b = colorStr[3];
+      return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+    }
+    return fallback;
+  }
+  if (/^[0-9A-Fa-f]{6}$/.test(colorStr)) return `#${colorStr.toLowerCase()}`;
+  return fallback;
+}
+
+/**
+ * @param {string} hex — #rrggbb
+ * @returns {string} text-shadow
+ */
+function buildUserCallTextShadow(hex) {
+  const h = hex.replace('#', '');
+  if (h.length !== 6) {
+    return buildUserCallTextShadow('#ff6600');
+  }
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return [
+    `-2px -2px 0 ${hex}`,
+    `2px -2px 0 ${hex}`,
+    `-2px 2px 0 ${hex}`,
+    `2px 2px 0 ${hex}`,
+    `0 0 10px rgba(${r},${g},${b},0.8)`,
+    `0 0 20px rgba(${r},${g},${b},0.6)`,
+    `0 0 30px rgba(${r},${g},${b},0.4)`,
+    `0 0 40px rgba(${r},${g},${b},0.2)`,
+  ].join(', ');
+}
+
+/**
  * 유저 호출 소켓 리스너 설정
  */
 function setupUserCallSocket() {
@@ -1966,8 +2042,8 @@ function setupUserCallSocket() {
         const soundPath = game.settings.get('lichsoma-taskbar', 'userCallSound');
         const soundVolume = game.settings.get('lichsoma-taskbar', 'userCallSoundVolume');
         
-        if (soundPath) {
-          AudioHelper.play({
+        if (soundPath && foundry?.audio?.AudioHelper) {
+          foundry.audio.AudioHelper.play({
             src: soundPath,
             volume: soundVolume,
             autoplay: true,
@@ -1978,7 +2054,7 @@ function setupUserCallSocket() {
         // 호출 메시지 표시
         const callerName = data.callerName;
         const message = game.i18n.format('Taskbar.UserCall.Message', { caller: callerName });
-        showUserCallMessage(message);
+        showUserCallMessage(message, { callerColor: data.callerColor });
       }
     }
   });
@@ -1994,16 +2070,22 @@ function callUser(targetUser) {
   game.socket.emit('module.lichsoma-taskbar', {
     type: 'userCall',
     targetUserId: targetUser.id,
-    callerName: game.user.name
+    callerName: game.user.name,
+    callerColor: resolveUserColorToHex(game.user)
   });
 }
 
 /**
  * 유저 호출 메시지 표시 (화면 중앙)
+ * @param {string} message
+ * @param {{ callerColor?: string }} [options] — callerColor: #rrggbb (호출한 유저 색, 플레이어 목록 점과 동일)
  */
-function showUserCallMessage(message) {
+function showUserCallMessage(message, options = {}) {
   // 기존 메시지가 있으면 제거
   hideUserCallMessage();
+  
+  const accent = resolveUserColorToHex(options.callerColor, '#ff6600');
+  const glow = buildUserCallTextShadow(accent);
   
   // 메시지 생성
   const messageElement = document.createElement('div');
@@ -2024,15 +2106,7 @@ function showUserCallMessage(message) {
     white-space: pre-wrap;
     max-width: 80%;
     font-family: Arial, sans-serif;
-    text-shadow: 
-      -2px -2px 0 #ff6600,
-      2px -2px 0 #ff6600,
-      -2px 2px 0 #ff6600,
-      2px 2px 0 #ff6600,
-      0 0 10px rgba(255, 102, 0, 0.8),
-      0 0 20px rgba(255, 102, 0, 0.6),
-      0 0 30px rgba(255, 102, 0, 0.4),
-      0 0 40px rgba(255, 102, 0, 0.2);
+    text-shadow: ${glow};
   `;
   messageElement.textContent = message;
   
@@ -2061,47 +2135,63 @@ function showUserCallMessage(message) {
           transform: translate(-50%, -50%) scale(1.1);
         }
       }
-      @keyframes taskbar-call-fadeout {
-        0% {
-          opacity: 1;
-          transform: translate(-50%, -50%) scale(1);
-        }
-        100% {
-          opacity: 0;
-          transform: translate(-50%, -50%) scale(0.9);
-        }
-      }
     `;
     document.head.appendChild(style);
   }
   
-  // 마우스 이동과 키보드 입력 감지 리스너 추가
-  const removeListeners = () => {
-    document.removeEventListener('mousemove', handleMessageDismiss);
-    document.removeEventListener('keydown', handleMessageDismiss);
-  };
+  // 마우스 이동·키보드 입력 감지 후(아래 setTimeout ms) 1초 동안 투명도만 페이드(펄스 transform 유지)
+  userCallInteractionAbort = new AbortController();
+  const { signal } = userCallInteractionAbort;
   
-  const handleMessageDismiss = () => {
-    const msg = document.getElementById('lichsoma-taskbar-user-call-message');
-    if (msg) {
-      // 페이드 아웃 애니메이션 적용
-      msg.style.animation = 'taskbar-call-fadeout 0.5s ease-out forwards';
-      setTimeout(() => {
-        hideUserCallMessage();
-      }, 500);
+  const onUserActivity = () => {
+    if (userCallInteractionAbort) {
+      try {
+        userCallInteractionAbort.abort();
+      } catch (_) { /* no-op */ }
+      userCallInteractionAbort = null;
     }
-    removeListeners();
+    if (userCallDismissTimeout) {
+      clearTimeout(userCallDismissTimeout);
+      userCallDismissTimeout = null;
+    }
+    userCallDismissTimeout = setTimeout(() => {
+      userCallDismissTimeout = null;
+      const msg = document.getElementById('lichsoma-taskbar-user-call-message');
+      if (msg) {
+        // transform은 taskbar-call-pulse에 맡기고, opacity만 서서히 제거
+        msg.style.willChange = 'opacity';
+        msg.style.transition = 'opacity 1s ease-out';
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const el = document.getElementById('lichsoma-taskbar-user-call-message');
+            if (el) el.style.opacity = '0';
+          });
+        });
+        setTimeout(() => {
+          hideUserCallMessage();
+        }, 750);
+      }
+    }, 1000);
   };
   
-  // 이벤트 리스너 등록
-  document.addEventListener('mousemove', handleMessageDismiss, { once: true });
-  document.addEventListener('keydown', handleMessageDismiss, { once: true });
+  document.addEventListener('mousemove', onUserActivity, { once: true, signal });
+  document.addEventListener('keydown', onUserActivity, { once: true, signal });
 }
 
 /**
  * 유저 호출 메시지 제거
  */
 function hideUserCallMessage() {
+  if (userCallInteractionAbort) {
+    try {
+      userCallInteractionAbort.abort();
+    } catch (_) { /* no-op */ }
+    userCallInteractionAbort = null;
+  }
+  if (userCallDismissTimeout) {
+    clearTimeout(userCallDismissTimeout);
+    userCallDismissTimeout = null;
+  }
   const messageElement = document.getElementById('lichsoma-taskbar-user-call-message');
   if (messageElement) {
     messageElement.remove();

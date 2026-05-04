@@ -236,6 +236,31 @@
   align-items: center;
 }
 
+/* 기존 [레이턴시][FPS] 가로 정렬 유지 */
+#taskbar-stats-perf {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* 날짜/시간 표시(2줄) */
+#taskbar-stats-datetime {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 70px;
+}
+
+.taskbar-datetime-line {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
 .taskbar-stat {
   display: flex;
   flex-direction: column;
@@ -278,7 +303,7 @@
 .taskbar-window-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0;
   padding: 6px 12px;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -315,14 +340,8 @@
   opacity: 1;
 }
 
-.taskbar-window-btn.minimized .window-name,
-.taskbar-window-btn.minimized i {
+.taskbar-window-btn.minimized .window-name {
   color: #ff4444;
-}
-
-.taskbar-window-btn i {
-  font-size: 14px;
-  flex-shrink: 0;
 }
 
 .taskbar-window-btn .window-name {
@@ -515,3 +534,102 @@
   border: 1px solid #6B6B6B;
 }
 
+/* 태그 관리 다이얼로그 (DialogV2, lichsoma-taskbar-tagger) */
+.tags-dialog {
+  padding: 5px;
+}
+
+.tags-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tags-dialog-title {
+  font-weight: bold;
+  font-size: 14px;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+
+.tags-dialog-add-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  color: var(--color-text-primary, #ffffff);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.tags-dialog-add-btn:hover {
+  background: transparent;
+  color: #ffbb00;
+}
+
+.tags-dialog-add-btn i {
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.tags-dialog .tags-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.tags-dialog .tag-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tags-dialog .tag-input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: 13px;
+  border: 1px solid #999;
+  border-radius: 3px;
+  background: white;
+  color: black;
+}
+
+.tags-dialog .tag-remove-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  color: var(--color-text-secondary, rgba(255, 255, 255, 0.65));
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.tags-dialog .tag-remove-btn:hover {
+  color: #dc3545;
+  background: transparent;
+}
+
+.tags-dialog .tag-remove-btn i {
+  font-size: 13px;
+  pointer-events: none;
+}

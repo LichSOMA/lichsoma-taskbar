@@ -376,7 +376,11 @@ window.createSystemMenuPanel = function() {
     if (filePickerBtn) {
       filePickerBtn.addEventListener('click', () => {
         // FilePicker 열기
-        new FilePicker({
+        const FilePickerImplementation =
+          foundry?.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker;
+        if (!FilePickerImplementation) return;
+
+        new FilePickerImplementation({
           type: 'any',
           current: '',
           callback: (path) => {
@@ -392,29 +396,27 @@ window.createSystemMenuPanel = function() {
     }
   }
   
-  // 매크로 디렉토리 버튼
+  // 매크로 디렉토리 버튼 (FVTT 14: 탭 우클릭은 contextmenu가 아니라 auxclick/button===2 → renderPopout)
   const macrosBtn = panel.querySelector('#menu-macros');
   if (macrosBtn) {
     macrosBtn.addEventListener('click', () => {
-      // 사이드바의 매크로 탭 버튼 찾기 (여러 방법 시도)
-      // 방법 1: ui-right > sidebar > tabs > faded-ui 안의 fa-code 버튼
-      let macroTabButton = document.querySelector('#sidebar-tabs a[data-tab="macros"], #sidebar-tabs button[data-tab="macros"]');
-      
-      if (macroTabButton) {
-        // 우클릭 이벤트 시뮬레이션
-        const contextEvent = new MouseEvent('contextmenu', {
-          bubbles: true,
-          cancelable: true,
-          button: 2,
-          buttons: 2,
-          clientX: macroTabButton.getBoundingClientRect().left + 10,
-          clientY: macroTabButton.getBoundingClientRect().top + 10
-        });
-        macroTabButton.dispatchEvent(contextEvent);
+      const macroApp = ui.macros;
+      if (macroApp && typeof macroApp.renderPopout === 'function') {
+        macroApp.renderPopout();
+      } else {
+        const macroTabButton = document.querySelector('#sidebar-tabs [data-tab="macros"]');
+        if (macroTabButton) {
+          macroTabButton.dispatchEvent(new MouseEvent('auxclick', {
+            bubbles: true,
+            cancelable: true,
+            button: 2,
+            buttons: 2
+          }));
+        }
       }
-      
+
       const logoBtn = document.querySelector('.taskbar-logo');
-      toggleSystemMenu(logoBtn); // 메뉴 닫기
+      toggleSystemMenu(logoBtn);
     });
   }
 };

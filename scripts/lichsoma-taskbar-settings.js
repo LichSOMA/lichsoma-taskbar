@@ -1,69 +1,123 @@
 // LichSOMA's Taskbar - Settings Form
 
-// 커스텀 설정 폼
-window.TaskbarSettingsForm = class TaskbarSettingsForm extends FormApplication {
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: 'lichsoma-taskbar-settings',
-      title: game.i18n.localize('Taskbar.SettingsFormTitle'),
-      template: 'modules/lichsoma-taskbar/templates/taskbar-settings.html',
-      width: 500,
-      height: 'auto',
-      closeOnSubmit: true,
-      submitOnClose: false
-    });
+const DialogV2 = foundry.applications.api.DialogV2;
+
+// 커스텀 설정 다이얼로그 (DialogV2)
+window.TaskbarSettingsForm = class TaskbarSettingsForm extends DialogV2 {
+  /** @inheritDoc */
+  static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS, {
+    id: "lichsoma-taskbar-settings",
+    window: {
+      title: "Taskbar.SettingsFormTitle"
+    }
+  });
+
+  constructor(options = {}) {
+    const color = game.settings.get("lichsoma-taskbar", "taskbarColor");
+    const opacity = game.settings.get("lichsoma-taskbar", "taskbarOpacity");
+
+    const content = `
+      <div class="form-group">
+        <label>${game.i18n.localize("Taskbar.SettingsColor")}</label>
+        <div class="form-fields">
+          <input type="color" name="color" value="${color}">
+          <input type="text" name="colorText" value="${color}" placeholder="#RRGGBB">
+        </div>
+        <p class="hint">${game.i18n.localize("Taskbar.SettingsColorHint")}</p>
+      </div>
+
+      <div class="form-group">
+        <label>${game.i18n.localize("Taskbar.SettingsOpacity")}</label>
+        <div class="form-fields">
+          <input type="range" name="opacity" min="0" max="100" step="5" value="${opacity}">
+          <input type="number" name="opacityNumber" min="0" max="100" step="5" value="${opacity}" style="width: 6ch;">
+        </div>
+        <p class="hint">${game.i18n.localize("Taskbar.SettingsOpacityHint")}</p>
+      </div>
+    `;
+
+    super(foundry.utils.mergeObject({
+      modal: true,
+      content,
+      buttons: [
+        {
+          action: "save",
+          label: "Taskbar.Save",
+          icon: "fa-solid fa-floppy-disk",
+          default: true,
+          callback: async (_event, _target, dialog) => {
+            const el = dialog.element;
+            const picked = el.querySelector('input[name="color"]')?.value?.trim();
+            const typed = el.querySelector('input[name="colorText"]')?.value?.trim();
+            const colorValue = (/^#[0-9A-F]{6}$/i.test(typed || "") ? typed : picked) || "#0B0A13";
+
+            const opacityRaw = el.querySelector('input[name="opacity"]')?.value ?? opacity;
+            const opacityValue = Number(opacityRaw);
+
+            await game.settings.set("lichsoma-taskbar", "taskbarColor", colorValue);
+            await game.settings.set("lichsoma-taskbar", "taskbarOpacity", Number.isFinite(opacityValue) ? opacityValue : opacity);
+
+            ui.notifications.info(game.i18n.localize("Taskbar.SettingsSaveSuccess"));
+            window.location.reload();
+          }
+        },
+        {
+          action: "reset",
+          label: "Taskbar.SettingsReset",
+          icon: "fa-solid fa-rotate-left",
+          callback: async (_event, _target, dialog) => {
+            const confirmed = await DialogV2.confirm({
+              modal: true,
+              window: { title: game.i18n.localize("Taskbar.SettingsResetTitle") },
+              content: `<p>${game.i18n.localize("Taskbar.SettingsResetContent")}</p>`,
+              yes: { callback: () => true },
+              no: { default: true, callback: () => false }
+            });
+            if (!confirmed) return;
+
+            await game.settings.set("lichsoma-taskbar", "taskbarColor", "#0B0A13");
+            await game.settings.set("lichsoma-taskbar", "taskbarOpacity", 100);
+
+            ui.notifications.info(game.i18n.localize("Taskbar.SettingsResetSuccess"));
+            dialog.close();
+            window.location.reload();
+          }
+        },
+        {
+          action: "cancel",
+          label: "Taskbar.Cancel",
+          icon: "fa-solid fa-xmark"
+        }
+      ]
+    }, options));
   }
 
-  getData() {
-    return {
-      color: game.settings.get('lichsoma-taskbar', 'taskbarColor'),
-      opacity: game.settings.get('lichsoma-taskbar', 'taskbarOpacity')
-    };
-  }
+  /** @override */
+  _onRender(...args) {
+    super._onRender(...args);
 
-  activateListeners(html) {
-    super.activateListeners(html);
-    
-    // 초기화 버튼
-    html.find('button[name="reset"]').click(async (ev) => {
-      ev.preventDefault();
-      
-      const confirmed = await Dialog.confirm({
-        title: game.i18n.localize('Taskbar.SettingsResetTitle'),
-        content: `<p>${game.i18n.localize('Taskbar.SettingsResetContent')}</p>`,
-        yes: () => true,
-        no: () => false,
-        defaultYes: false
-      });
-      
-      if (confirmed) {
-        await game.settings.set('lichsoma-taskbar', 'taskbarColor', '#0B0A13');
-        await game.settings.set('lichsoma-taskbar', 'taskbarOpacity', 100);
-        
-        ui.notifications.info(game.i18n.localize('Taskbar.SettingsResetSuccess'));
-        window.location.reload();
-      }
-    });
-    
-    // 색상 선택기와 텍스트 입력 동기화
-    html.find('input[name="color"]').on('input', (ev) => {
-      html.find('input[name="colorText"]').val(ev.target.value);
-    });
-    
-    html.find('input[name="colorText"]').on('input', (ev) => {
-      const value = ev.target.value;
-      if (/^#[0-9A-F]{6}$/i.test(value)) {
-        html.find('input[name="color"]').val(value);
-      }
-    });
-  }
+    const root = this.element;
+    const color = root.querySelector('input[name="color"]');
+    const colorText = root.querySelector('input[name="colorText"]');
+    const opacity = root.querySelector('input[name="opacity"]');
+    const opacityNumber = root.querySelector('input[name="opacityNumber"]');
 
-  async _updateObject(event, formData) {
-    await game.settings.set('lichsoma-taskbar', 'taskbarColor', formData.color);
-    await game.settings.set('lichsoma-taskbar', 'taskbarOpacity', formData.opacity);
-    
-    ui.notifications.info(game.i18n.localize('Taskbar.SettingsSaveSuccess'));
-    window.location.reload();
+    if (color && colorText) {
+      color.addEventListener("input", () => (colorText.value = color.value), { passive: true });
+      colorText.addEventListener("input", () => {
+        const value = colorText.value.trim();
+        if (/^#[0-9A-F]{6}$/i.test(value)) color.value = value;
+      }, { passive: true });
+    }
+
+    if (opacity && opacityNumber) {
+      const sync = (v) => {
+        opacity.value = String(v);
+        opacityNumber.value = String(v);
+      };
+      opacity.addEventListener("input", () => sync(opacity.value), { passive: true });
+      opacityNumber.addEventListener("input", () => sync(opacityNumber.value), { passive: true });
+    }
   }
 };
 
