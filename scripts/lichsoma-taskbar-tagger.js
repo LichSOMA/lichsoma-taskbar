@@ -1,9 +1,22 @@
 // LichSOMA's Taskbar - Tagger
 
 // FVTT 14 DocumentSheetV2: renderActorSheet / renderItemSheet 만으로는 V2 시트에 훅이 걸리지 않음
-// → renderActorSheetV2 / renderItemSheetV2 동시 구독, 헤더는 header-control + toggleControls 앞 삽입 (lichsoma-actor-emotions.js 와 동일 패턴)
+// → renderActorSheetV2 / renderItemSheetV2 동시 구독 (lichsoma-speaker-selector lichsoma-actor-emotions.js 와 동일)
+// V1 시트만 레거시(flat 링크) 스타일 — V2 훅에서는 --legacy-sheet 미부착
 
-function injectActorTagsButton(app, html) {
+/**
+ * @param {boolean} fromSheetV2Hook - renderActorSheetV2 / renderItemSheetV2 에서 호출되면 true
+ */
+function applyLegacySheetTagButtonClass($button, windowHeader, fromSheetV2Hook) {
+  if (fromSheetV2Hook) return;
+  const sheetRoot = windowHeader.closest('.application, .window-app');
+  const isAppV2 = windowHeader.closest('.application-v2').length > 0;
+  if (sheetRoot.length && !isAppV2) {
+    $button.addClass('taskbar-tags-manage-btn--legacy-sheet');
+  }
+}
+
+function injectActorTagsButton(app, html, fromActorSheetV2Hook = false) {
   const actor = app.actor || app.object || app.document;
   if (!actor) return;
 
@@ -14,15 +27,18 @@ function injectActorTagsButton(app, html) {
   const windowHeader = $root.find('.window-header');
   if (!windowHeader.length) return;
 
-  if (windowHeader.find('.actor-tags-button').length) return;
+  if (windowHeader.find('.taskbar-tags-manage-btn').length) return;
 
   const manageTitle = game.i18n.localize('Taskbar.TagsManagement');
   const tagsLabel = game.i18n.localize('Taskbar.Tags');
   const tagsButton = $(`
-    <button type="button" class="header-control actor-tags-button" title="${manageTitle}" aria-label="${manageTitle}">
-      <i class="fa-solid fa-tags"></i> <span class="label">${tagsLabel}</span>
+    <button type="button" class="header-control taskbar-tags-manage-btn" title="${manageTitle}" aria-label="${manageTitle}">
+      <i class="fa-solid fa-tags"></i>
+      <span class="taskbar-tags-manage-label">${tagsLabel}</span>
     </button>
   `);
+
+  applyLegacySheetTagButtonClass(tagsButton, windowHeader, fromActorSheetV2Hook);
 
   const stopDragHandshake = (ev) => {
     ev.stopPropagation();
@@ -54,10 +70,10 @@ function injectActorTagsButton(app, html) {
   }
 }
 
-Hooks.on('renderActorSheet', (app, html) => injectActorTagsButton(app, html));
-Hooks.on('renderActorSheetV2', (app, html) => injectActorTagsButton(app, html));
+Hooks.on('renderActorSheet', (app, html) => injectActorTagsButton(app, html, false));
+Hooks.on('renderActorSheetV2', (app, html) => injectActorTagsButton(app, html, true));
 
-function injectItemTagsButton(app, html) {
+function injectItemTagsButton(app, html, fromItemSheetV2Hook = false) {
   const item = app.item || app.object || app.document;
   if (!item) return;
 
@@ -68,15 +84,18 @@ function injectItemTagsButton(app, html) {
   const windowHeader = $root.find('.window-header');
   if (!windowHeader.length) return;
 
-  if (windowHeader.find('.item-tags-button').length) return;
+  if (windowHeader.find('.taskbar-tags-manage-btn').length) return;
 
   const manageTitle = game.i18n.localize('Taskbar.TagsManagement');
   const tagsLabel = game.i18n.localize('Taskbar.Tags');
   const tagsButton = $(`
-    <button type="button" class="header-control item-tags-button" title="${manageTitle}" aria-label="${manageTitle}">
-      <i class="fa-solid fa-tags"></i> <span class="label">${tagsLabel}</span>
+    <button type="button" class="header-control taskbar-tags-manage-btn" title="${manageTitle}" aria-label="${manageTitle}">
+      <i class="fa-solid fa-tags"></i>
+      <span class="taskbar-tags-manage-label">${tagsLabel}</span>
     </button>
   `);
+
+  applyLegacySheetTagButtonClass(tagsButton, windowHeader, fromItemSheetV2Hook);
 
   const stopDragHandshake = (ev) => {
     ev.stopPropagation();
@@ -108,8 +127,8 @@ function injectItemTagsButton(app, html) {
   }
 }
 
-Hooks.on('renderItemSheet', (app, html) => injectItemTagsButton(app, html));
-Hooks.on('renderItemSheetV2', (app, html) => injectItemTagsButton(app, html));
+Hooks.on('renderItemSheet', (app, html) => injectItemTagsButton(app, html, false));
+Hooks.on('renderItemSheetV2', (app, html) => injectItemTagsButton(app, html, true));
 
 // 장면 설정에 태그 버튼 추가
 Hooks.on('renderSceneConfig', (app, html, data) => {
@@ -135,14 +154,25 @@ Hooks.on('renderSceneConfig', (app, html, data) => {
   if (!windowHeader.length) return;
   
   // 이미 버튼이 있으면 추가하지 않음
-  if (windowHeader.find('.scene-tags-button').length) return;
-  
-  // 태그 버튼 생성
+  if (windowHeader.find('.taskbar-tags-manage-btn').length) return;
+
+  const manageTitle = game.i18n.localize('Taskbar.TagsManagement');
+  const tagsLabel = game.i18n.localize('Taskbar.Tags');
+
   const tagsButton = $(`
-    <button type="button" class="header-control scene-tags-button" title="${game.i18n.localize('Taskbar.TagsManagement')}" aria-label="${game.i18n.localize('Taskbar.TagsManagement')}">
-      <i class="fa-solid fa-tags"></i> <span class="label">${game.i18n.localize('Taskbar.Tags')}</span>
+    <button type="button" class="header-control taskbar-tags-manage-btn" title="${manageTitle}" aria-label="${manageTitle}">
+      <i class="fa-solid fa-tags"></i>
+      <span class="taskbar-tags-manage-label">${tagsLabel}</span>
     </button>
   `);
+
+  applyLegacySheetTagButtonClass(tagsButton, windowHeader, false);
+
+  const stopDragHandshake = (ev) => {
+    ev.stopPropagation();
+  };
+  tagsButton.on('pointerdown', stopDragHandshake);
+  tagsButton.on('mousedown', stopDragHandshake);
   
   // 버튼 클릭 이벤트
   tagsButton.on('click', (e) => {

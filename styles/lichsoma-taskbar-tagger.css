@@ -1,0 +1,46 @@
+/*
+ * 시트 헤더 태그 버튼 — lichsoma-speaker-selector 의 감정 버튼과 동일 패턴
+ * (V1: --legacy-sheet 플랫 링크 톤 / V2: renderActorSheetV2 훅에서 레거시 클래스 미부착)
+ */
+
+.window-header .taskbar-tags-manage-btn {
+  width: auto;
+  max-width: max-content;
+  min-width: unset;
+  white-space: nowrap;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.window-header .taskbar-tags-manage-btn--legacy-sheet {
+  padding: 0;
+  margin-left: 8px;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: #f0f0e0 !important;
+}
+
+.window-header .taskbar-tags-manage-btn--legacy-sheet i,
+.window-header .taskbar-tags-manage-btn--legacy-sheet .taskbar-tags-manage-label {
+  color: #f0f0e0 !important;
+}
+
+.window-header .taskbar-tags-manage-btn--legacy-sheet:hover,
+.window-header .taskbar-tags-manage-btn--legacy-sheet:focus-visible {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: #f0f0e0 !important;
+}
+
+.window-header .taskbar-tags-manage-btn--legacy-sheet:hover i,
+.window-header .taskbar-tags-manage-btn--legacy-sheet:hover .taskbar-tags-manage-label,
+.window-header .taskbar-tags-manage-btn--legacy-sheet:focus-visible i,
+.window-header .taskbar-tags-manage-btn--legacy-sheet:focus-visible .taskbar-tags-manage-label {
+  color: #f0f0e0 !important;
+  text-shadow:
+    0 0 8px rgba(255, 95, 95, 0.95),
+    0 0 16px rgba(200, 55, 60, 0.65);
+}
