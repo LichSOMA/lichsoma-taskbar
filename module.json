@@ -1,48 +1,56 @@
 {
-    "id": "lichsoma-taskbar",
-    "title": "LichSOMA's Taskbar",
-    "description": "A taskbar module for Foundry VTT",
-    "version": "2.0.1",
-    "compatibility": {
-      "minimum": "14",
-      "verified": "14"
+  "id": "lichsoma-taskbar",
+  "title": "LichSOMA's Taskbar",
+  "description": "A taskbar module for Foundry VTT",
+  "version": "3.0.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "14"
+  },
+  "authors": [
+    {
+      "name": "LichSoma"
+    }
+  ],
+  "esmodules": [
+    "scripts/lichsoma-taskbar-compat.js",
+    "scripts/lichsoma-taskbar-api.js",
+    "scripts/lichsoma-taskbar-settings.js",
+    "scripts/lichsoma-taskbar-system-menu.js",
+    "scripts/lichsoma-taskbar-tagger.js",
+    "scripts/lichsoma-taskbar-hotbar.js",
+    "scripts/lichsoma-taskbar-screen.js",
+    "scripts/lichsoma-taskbar-quest-list.js",
+    "scripts/lichsoma-taskbar-filepicker-preview.js",
+    "scripts/lichsoma-taskbar.js"
+  ],
+  "styles": [
+    "styles/lichsoma-taskbar.css",
+    "styles/lichsoma-taskbar-tagger.css",
+    "styles/lichsoma-taskbar-system-menu.css",
+    "styles/lichsoma-taskbar-screen.css",
+    "styles/lichsoma-taskbar-quest-list.css",
+    "styles/lichsoma-taskbar-filepicker-preview.css",
+    "styles/lichsoma-taskbar-theme.css",
+    "styles/lichsoma-taskbar-filepicker-theme.css",
+    "styles/lichsoma-taskbar-settings.css"
+  ],
+  "languages": [
+    {
+      "lang": "ko",
+      "name": "Korean",
+      "path": "lang/ko.json"
     },
-    "authors": [
-      {
-        "name": "LichSoma"
-      }
-    ],
-    "esmodules": [
-      "scripts/lichsoma-taskbar-settings.js",
-      "scripts/lichsoma-taskbar-system-menu.js",
-      "scripts/lichsoma-taskbar-tagger.js",
-      "scripts/lichsoma-taskbar-hotbar.js",
-      "scripts/lichsoma-taskbar-screen.js",
-      "scripts/lichsoma-taskbar-quest-list.js",
-      "scripts/lichsoma-taskbar-filepicker-preview.js",
-      "scripts/lichsoma-taskbar.js"
-    ],
-    "styles": [
-      "styles/lichsoma-taskbar.css",
-      "styles/lichsoma-taskbar-tagger.css",
-      "styles/lichsoma-taskbar-system-menu.css",
-      "styles/lichsoma-taskbar-screen.css",
-      "styles/lichsoma-taskbar-quest-list.css",
-      "styles/lichsoma-taskbar-filepicker-preview.css"
-    ],
-    "languages": [
-      {
-        "lang": "ko",
-        "name": "Korean",
-        "path": "lang/ko.json"
-      }
-    ],
-    "socket": true,
-    "url": "https://github.com/LichSOMA/lichsoma-taskbar",
-    "manifest": "https://github.com/LichSOMA/lichsoma-taskbar/releases/latest/download/module.json",
-    "download": "https://github.com/LichSOMA/lichsoma-taskbar/releases/download/2.0.1/lichsoma-taskbar.zip",
-    "license": "https://github.com/LichSOMA/lichsoma-taskbar/blob/main/LICENSE",
-    "readme": "https://github.com/LichSOMA/lichsoma-taskbar/blob/main/README.md"
-  }
-  
-  
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "socket": true,
+  "url": "https://github.com/LichSOMA/lichsoma-taskbar",
+  "manifest": "https://github.com/LichSOMA/lichsoma-taskbar/releases/latest/download/module.json",
+  "download": "https://github.com/LichSOMA/lichsoma-taskbar/releases/download/3.0.0/lichsoma-taskbar.zip",
+  "license": "https://github.com/LichSOMA/lichsoma-taskbar/blob/main/LICENSE.md",
+  "readme": "https://github.com/LichSOMA/lichsoma-taskbar/blob/main/README.md"
+}

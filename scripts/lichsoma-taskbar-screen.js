@@ -1,6 +1,6 @@
 // LichSOMA's Taskbar - Screen (GM Screen / Player Screen)
 
-const DialogV2 = foundry.applications.api.DialogV2;
+const DialogV2 = window.LichsomaTaskbarCompat?.DialogV2 ?? foundry?.applications?.api?.DialogV2 ?? globalThis.DialogV2;
 
 // 스크린 데이터 저장
 let screenTabs = [
@@ -12,6 +12,22 @@ let screenConfig = {
   rows: 12
 };
 let gridVisible = true; // 격자 표시 여부
+
+const SCREEN_POSTIT_FLAG_SCOPE = 'lichsoma-taskbar';
+const SCREEN_POSTIT_FLAG_KEY = 'screenPostitTiles';
+const SCREEN_POSTIT_LAYER_ID = 'lichsoma-taskbar-postit-layer';
+const SCREEN_POSTIT_DEFAULT_WIDTH = 180;
+const SCREEN_POSTIT_DEFAULT_HEIGHT = 130;
+const SPEAKER_STAGE_MODULE_ID = 'lichsoma-speaker-stage';
+const SPEAKER_STAGE_NARRATIVE_SETTING = 'stageBackgroundNarrativeMode';
+const SPEAKER_STAGE_MINI_SETTING = 'stageBackgroundMiniMode';
+const SCREEN_POSTIT_TOOL_NAME = 'lichsoma-taskbar-postit-note';
+let screenPostitRenderFrame = null;
+let screenPostitStageLayerObserver = null;
+let screenPostitStageLayerSyncFrame = null;
+let screenPostitLastControlClickAt = 0;
+
+Hooks.on('getSceneControlButtons', addScreenPostitSceneControlButton);
 
 // localStorage에서 스크린 탭 불러오기
 function loadScreenItems() {
@@ -95,10 +111,82 @@ function saveGridVisible() {
   localStorage.setItem(`lichsoma-taskbar-grid-visible-${worldId}-${userId}`, JSON.stringify(gridVisible));
 }
 
+function addScreenPostitSceneControlButton(controls) {
+  if (!game.user?.isGM) return;
+
+  const tool = buildScreenPostitSceneControlTool();
+
+  if (Array.isArray(controls)) {
+    const control = controls.find(entry => entry?.name === 'token' || entry?.name === 'tokens') || controls[0];
+    if (!control) return;
+    if (Array.isArray(control.tools)) {
+      if (!control.tools.some(entry => entry?.name === SCREEN_POSTIT_TOOL_NAME)) control.tools.push(tool);
+    } else {
+      control.tools = control.tools || {};
+      if (!control.tools[SCREEN_POSTIT_TOOL_NAME]) {
+        control.tools[SCREEN_POSTIT_TOOL_NAME] = { ...tool, order: Object.keys(control.tools).length };
+      }
+    }
+    return;
+  }
+
+  if (!controls || typeof controls !== 'object') return;
+  const control = controls.tokens || controls.token || Object.values(controls).find(entry => entry?.name === 'tokens' || entry?.name === 'token') || Object.values(controls)[0];
+  if (!control) return;
+
+  control.tools = control.tools || {};
+  if (Array.isArray(control.tools)) {
+    if (!control.tools.some(entry => entry?.name === SCREEN_POSTIT_TOOL_NAME)) control.tools.push(tool);
+  } else if (!control.tools[SCREEN_POSTIT_TOOL_NAME]) {
+    control.tools[SCREEN_POSTIT_TOOL_NAME] = { ...tool, order: Object.keys(control.tools).length };
+  }
+}
+
+function buildScreenPostitSceneControlTool() {
+  return {
+    name: SCREEN_POSTIT_TOOL_NAME,
+    title: 'Taskbar.Note',
+    icon: 'fa-solid fa-note-sticky',
+    button: true,
+    visible: () => !!game.user?.isGM && !!canvas?.scene,
+    onClick: handleScreenPostitSceneControlClick,
+    onChange: handleScreenPostitSceneControlClick
+  };
+}
+
+async function handleScreenPostitSceneControlClick() {
+  if (!game.user?.isGM) return;
+
+  const now = Date.now();
+  if (now - screenPostitLastControlClickAt < 250) return;
+  screenPostitLastControlClickAt = now;
+  await createBlankScreenPostitTileAtViewport();
+}
+
 Hooks.once('ready', () => {
   loadScreenItems();
   loadScreenConfig();
   loadGridVisible();
+  
+  Hooks.on('canvasReady', () => renderScreenPostitTiles());
+  Hooks.on('canvasTearDown', () => removeScreenPostitLayer());
+  Hooks.on('canvasPan', () => scheduleScreenPostitPositionUpdate());
+  Hooks.on('updateSetting', (setting) => {
+    if (isSettingChange(setting, SPEAKER_STAGE_MODULE_ID, SPEAKER_STAGE_NARRATIVE_SETTING) ||
+      isSettingChange(setting, SPEAKER_STAGE_MODULE_ID, SPEAKER_STAGE_MINI_SETTING)) {
+      scheduleScreenPostitStageLayerSync();
+    }
+  });
+  Hooks.on('updateScene', (scene, changes) => {
+    if (scene?.id === canvas?.scene?.id && foundry.utils.hasProperty(changes, `flags.${SCREEN_POSTIT_FLAG_SCOPE}.${SCREEN_POSTIT_FLAG_KEY}`)) {
+      renderScreenPostitTiles();
+    } else if (scene?.id === canvas?.scene?.id) {
+      scheduleScreenPostitPositionUpdate();
+    }
+  });
+  window.addEventListener('resize', () => scheduleScreenPostitPositionUpdate());
+  setupScreenPostitStageLayerSync();
+  renderScreenPostitTiles();
   
   // 저널 페이지 업데이트 감지 - 스크린이 열려있을 때만 즉시 갱신
   // (닫혀있을 때는 스크린을 열 때 자동으로 최신 데이터로 업데이트됨)
@@ -1349,12 +1437,711 @@ async function updateScreenContent() {
   }
 }
 
+function getRectangleShapeType() {
+  return globalThis.foundry?.data?.ShapeData?.TYPES?.RECTANGLE ?? globalThis.CONST?.DRAWING_TYPES?.RECTANGLE ?? 'r';
+}
+
+function getSolidFillType() {
+  return globalThis.CONST?.DRAWING_FILL_TYPES?.SOLID ?? 1;
+}
+
+function noteHtmlToPlainText(html) {
+  const prepared = String(html || '')
+    .replace(/<br\s*\/?\s*>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6])>/gi, '\n');
+  const element = document.createElement('div');
+  element.innerHTML = prepared;
+  return (element.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function getCanvasPointFromClient(event) {
+  if (typeof canvas?.canvasCoordinatesFromClient === 'function') {
+    return canvas.canvasCoordinatesFromClient({ x: event.clientX, y: event.clientY });
+  }
+
+  const view = canvas?.app?.view ?? canvas?.app?.renderer?.view;
+  const rect = view?.getBoundingClientRect?.();
+  if (!rect || !canvas?.stage?.worldTransform) return null;
+
+  const PointClass = globalThis.PIXI?.Point;
+  const screenPoint = PointClass
+    ? new PointClass(event.clientX - rect.left, event.clientY - rect.top)
+    : { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  return canvas.stage.worldTransform.applyInverse(screenPoint);
+}
+
+function isCanvasDropArea(event) {
+  if (!canvas?.ready || !canvas?.scene) return false;
+
+  const target = document.elementFromPoint(event.clientX, event.clientY);
+  if (!target) return false;
+
+  if (target.closest('#taskbar-screen-panel')) return false;
+  if (target.closest('.lichsoma-taskbar, #sidebar, #navigation, #controls, #players, #hotbar')) return false;
+  if (target.closest('#ui-left, #ui-right, #ui-top, #ui-bottom, .app, .application, dialog')) return false;
+
+  const view = canvas?.app?.view ?? canvas?.app?.renderer?.view;
+  const rect = view?.getBoundingClientRect?.();
+  if (!rect) return false;
+
+  return event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+}
+
+function getScreenPostitTiles() {
+  const tiles = canvas?.scene?.getFlag(SCREEN_POSTIT_FLAG_SCOPE, SCREEN_POSTIT_FLAG_KEY);
+  return Array.isArray(tiles) ? tiles : [];
+}
+
+async function setScreenPostitTiles(tiles) {
+  if (!canvas?.scene) return false;
+  await canvas.scene.setFlag(SCREEN_POSTIT_FLAG_SCOPE, SCREEN_POSTIT_FLAG_KEY, tiles);
+  return true;
+}
+
+function getCanvasClientRect() {
+  const view = canvas?.app?.view ?? canvas?.app?.renderer?.view;
+  return view?.getBoundingClientRect?.() ?? null;
+}
+
+function getCanvasClientPointFromWorld(x, y) {
+  const rect = getCanvasClientRect();
+  if (!rect || !canvas?.stage?.worldTransform) return null;
+
+  const PointClass = globalThis.PIXI?.Point;
+  const worldPoint = PointClass ? new PointClass(x, y) : { x, y };
+  const screenPoint = canvas.stage.worldTransform.apply(worldPoint);
+  return {
+    x: rect.left + screenPoint.x,
+    y: rect.top + screenPoint.y
+  };
+}
+
+function getCanvasScale() {
+  const transform = canvas?.stage?.worldTransform;
+  if (!transform) return canvas?.stage?.scale?.x ?? 1;
+  return Math.abs(transform.a || canvas.stage?.scale?.x || 1);
+}
+
+function notePlainTextToHtml(text) {
+  const escaped = foundry.utils.escapeHTML(String(text || '').trim());
+  return escaped ? escaped.replace(/\n/g, '<br>') : '';
+}
+
+function localizeWithFallback(key, fallback) {
+  const localized = game.i18n.localize(key);
+  return localized && localized !== key ? localized : fallback;
+}
+
+function getScreenPostitTitle(tile) {
+  return String(tile?.title || game.i18n.localize('Taskbar.Note')).trim() || game.i18n.localize('Taskbar.Note');
+}
+
+function getScreenPostitBody(tile) {
+  return String(tile?.bodyText || '');
+}
+
+function getScreenPostitDimensionsFromNote(item) {
+  return {
+    width: Math.max(SCREEN_POSTIT_DEFAULT_WIDTH, (Number(item?.colSpan) || 3) * 58),
+    height: Math.max(SCREEN_POSTIT_DEFAULT_HEIGHT, (Number(item?.rowSpan) || 3) * 58)
+  };
+}
+
+function buildScreenPostitDataFromNote(item, event) {
+  const point = getCanvasPointFromClient(event);
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return null;
+
+  const { width, height } = getScreenPostitDimensionsFromNote(item);
+  const title = (item.name || game.i18n.localize('Taskbar.Note')).trim() || game.i18n.localize('Taskbar.Note');
+  const bodyText = noteHtmlToPlainText(item.content);
+
+  return {
+    id: foundry.utils.randomID(16),
+    sourceUuid: item.uuid,
+    title,
+    bodyText,
+    x: Math.round(point.x - width / 2),
+    y: Math.round(point.y - height / 2),
+    width,
+    height,
+    baseWidth: width,
+    baseHeight: height,
+    createdBy: game.user.id,
+    createdAt: Date.now()
+  };
+}
+
+async function createCanvasPostitTileFromNote(item, event) {
+  if (!isCanvasDropArea(event)) {
+    ui.notifications.warn(game.i18n.localize('Taskbar.NoteDropCanvasUnavailable'));
+    return false;
+  }
+
+  const postitData = buildScreenPostitDataFromNote(item, event);
+  if (!postitData) {
+    ui.notifications.warn(game.i18n.localize('Taskbar.NoteDropCanvasUnavailable'));
+    return false;
+  }
+
+  try {
+    const tiles = getScreenPostitTiles();
+    await setScreenPostitTiles([...tiles, postitData]);
+    ui.notifications.info(game.i18n.localize('Taskbar.NoteDroppedToCanvas'));
+    return true;
+  } catch (error) {
+    console.error('lichsoma-taskbar | failed to create note post-it tile:', error);
+    ui.notifications.warn(game.i18n.localize('Taskbar.NoteDropCanvasFailed'));
+    return false;
+  }
+}
+
+function getDefaultPostitClientPoint() {
+  const rect = getCanvasClientRect();
+  if (!rect) return null;
+
+  const sideControls = document.getElementById('controls') || document.getElementById('ui-left');
+  const nav = document.getElementById('navigation') || document.getElementById('ui-top');
+  const controlsRect = sideControls?.getBoundingClientRect?.();
+  const navRect = nav?.getBoundingClientRect?.();
+
+  const leftOffset = Math.max(150, Math.ceil((controlsRect?.right ?? 0) - rect.left + 24));
+  const topOffset = Math.max(120, Math.ceil((navRect?.bottom ?? 0) - rect.top + 28));
+
+  return {
+    clientX: Math.min(rect.right - 80, rect.left + leftOffset),
+    clientY: Math.min(rect.bottom - 80, rect.top + topOffset)
+  };
+}
+
+function buildBlankScreenPostitDataAtViewport() {
+  const client = getDefaultPostitClientPoint();
+  if (!client) return null;
+
+  const point = getCanvasPointFromClient(client);
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return null;
+
+  const width = 240;
+  const height = 170;
+  return {
+    id: foundry.utils.randomID(16),
+    sourceUuid: null,
+    title: game.i18n.localize('Taskbar.Note'),
+    bodyText: '',
+    x: Math.round(point.x),
+    y: Math.round(point.y),
+    width,
+    height,
+    baseWidth: width,
+    baseHeight: height,
+    createdBy: game.user.id,
+    createdAt: Date.now()
+  };
+}
+
+async function createBlankScreenPostitTileAtViewport() {
+  if (!canvas?.ready || !canvas?.scene) {
+    ui.notifications.warn(game.i18n.localize('Taskbar.PostitCreateCanvasUnavailable'));
+    return false;
+  }
+
+  const postitData = buildBlankScreenPostitDataAtViewport();
+  if (!postitData) {
+    ui.notifications.warn(game.i18n.localize('Taskbar.PostitCreateCanvasUnavailable'));
+    return false;
+  }
+
+  try {
+    const tiles = getScreenPostitTiles();
+    await setScreenPostitTiles([...tiles, postitData]);
+    ui.notifications.info(game.i18n.localize('Taskbar.PostitCreated'));
+    setTimeout(() => openScreenPostitEditDialog(postitData.id), 120);
+    return true;
+  } catch (error) {
+    console.error('lichsoma-taskbar | failed to create a blank post-it tile:', error);
+    ui.notifications.warn(game.i18n.localize('Taskbar.NoteDropCanvasFailed'));
+    return false;
+  }
+}
+
+window.createBlankScreenPostitTileAtViewport = createBlankScreenPostitTileAtViewport;
+
+function ensureScreenPostitLayer() {
+  let layer = document.getElementById(SCREEN_POSTIT_LAYER_ID);
+  const parent = document.getElementById('interface') || document.body;
+  if (layer) {
+    if (layer.parentElement !== parent) parent.appendChild(layer);
+    syncScreenPostitStageLayerState();
+    return layer;
+  }
+
+  layer = document.createElement('div');
+  layer.id = SCREEN_POSTIT_LAYER_ID;
+  parent.appendChild(layer);
+  syncScreenPostitStageLayerState();
+  return layer;
+}
+
+function isSettingChange(setting, namespace, key) {
+  if (!setting) return false;
+  const fullKey = `${namespace}.${key}`;
+  const rawNamespace = String(setting.namespace ?? setting.module ?? '');
+  const rawKey = String(setting.key ?? setting.id ?? setting._id ?? setting.name ?? '');
+  return rawKey === fullKey ||
+    (rawNamespace === namespace && rawKey === key) ||
+    (rawNamespace === namespace && rawKey === fullKey) ||
+    (!rawNamespace && rawKey.endsWith(`.${key}`) && rawKey === fullKey);
+}
+
+function getBooleanGameSetting(namespace, key) {
+  try {
+    return !!game.settings.get(namespace, key);
+  } catch (_error) {
+    return false;
+  }
+}
+
+function isSpeakerStageNarrativeBlockingPostits() {
+  const overlay = document.getElementById('lichsoma-stage-overlay');
+  if (!overlay || overlay.classList.contains('hidden')) return false;
+
+  const shell = overlay.querySelector(':scope > .lichsoma-stage-background-shell');
+  const miniBySetting = getBooleanGameSetting(SPEAKER_STAGE_MODULE_ID, SPEAKER_STAGE_MINI_SETTING);
+  const miniByDom = !!shell?.classList?.contains('lichsoma-stage-background-shell--mini');
+  if (miniBySetting || miniByDom) return false;
+
+  /*
+   * `.lichsoma-stage-bg-narrative-full-blocker`는 스피커 스테이지가 준비될 때 일반 모드에서도 미리 생성된다.
+   * 따라서 블로커 DOM의 존재나 narrative 설정값만으로 포스트잇을 숨기면 일반 모드에서도 사라질 수 있다.
+   * 풀 내러티브가 실제 적용될 때 스피커 스테이지가 붙이는 overlay 클래스만 신뢰한다.
+   */
+  return overlay.classList.contains('lichsoma-stage-overlay--narrative-full-pointer-block');
+}
+
+function syncScreenPostitStageLayerState() {
+  const layer = document.getElementById(SCREEN_POSTIT_LAYER_ID);
+  if (!layer) return;
+  const blocked = isSpeakerStageNarrativeBlockingPostits();
+  layer.classList.toggle('is-under-speaker-stage-narrative', blocked);
+  const hiddenValue = blocked ? 'true' : 'false';
+  if (layer.getAttribute('aria-hidden') !== hiddenValue) layer.setAttribute('aria-hidden', hiddenValue);
+}
+
+function scheduleScreenPostitStageLayerSync() {
+  if (screenPostitStageLayerSyncFrame) return;
+  screenPostitStageLayerSyncFrame = requestAnimationFrame(() => {
+    screenPostitStageLayerSyncFrame = null;
+    syncScreenPostitStageLayerState();
+  });
+}
+
+function setupScreenPostitStageLayerSync() {
+  if (screenPostitStageLayerObserver) return;
+  const root = document.getElementById('interface') || document.body;
+  screenPostitStageLayerObserver = new MutationObserver((mutations) => {
+    const shouldSync = mutations.some((mutation) => {
+      const target = mutation.target;
+      if (target?.id === SCREEN_POSTIT_LAYER_ID || target?.closest?.(`#${SCREEN_POSTIT_LAYER_ID}`)) return false;
+      if (target?.id === 'lichsoma-stage-overlay') return true;
+      if (target?.classList?.contains('lichsoma-stage-background-shell')) return true;
+      if (target?.classList?.contains('lichsoma-stage-background-frame')) return true;
+      return Array.from(mutation.addedNodes ?? []).some((node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        return node.id === 'lichsoma-stage-overlay' || !!node.querySelector?.('#lichsoma-stage-overlay');
+      });
+    });
+    if (shouldSync) scheduleScreenPostitStageLayerSync();
+  });
+  screenPostitStageLayerObserver.observe(root, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class', 'style']
+  });
+  scheduleScreenPostitStageLayerSync();
+}
+
+function removeScreenPostitLayer() {
+  const layer = document.getElementById(SCREEN_POSTIT_LAYER_ID);
+  if (layer) layer.remove();
+}
+
+function scheduleScreenPostitPositionUpdate() {
+  if (screenPostitRenderFrame) return;
+  screenPostitRenderFrame = requestAnimationFrame(() => {
+    screenPostitRenderFrame = null;
+    updateScreenPostitTilePositions();
+  });
+}
+
+function getScreenPostitContentScale(width, height, baseWidth, baseHeight) {
+  const safeWidth = Math.max(1, Number(width) || SCREEN_POSTIT_DEFAULT_WIDTH);
+  const safeHeight = Math.max(1, Number(height) || SCREEN_POSTIT_DEFAULT_HEIGHT);
+  const safeBaseWidth = Math.max(1, Number(baseWidth) || SCREEN_POSTIT_DEFAULT_WIDTH);
+  const safeBaseHeight = Math.max(1, Number(baseHeight) || SCREEN_POSTIT_DEFAULT_HEIGHT);
+  const widthRatio = safeWidth / safeBaseWidth;
+  const heightRatio = safeHeight / safeBaseHeight;
+  return Math.max(0.72, Math.min(2.8, Math.sqrt(widthRatio * heightRatio)));
+}
+
+function updateScreenPostitTilePositions() {
+  const layer = document.getElementById(SCREEN_POSTIT_LAYER_ID);
+  if (!layer || !canvas?.ready || !canvas?.scene) return;
+  syncScreenPostitStageLayerState();
+
+  const scale = getCanvasScale();
+  for (const tileElement of layer.querySelectorAll('.lichsoma-screen-postit-tile')) {
+    const x = Number(tileElement.dataset.worldX);
+    const y = Number(tileElement.dataset.worldY);
+    const width = Number(tileElement.dataset.worldWidth);
+    const height = Number(tileElement.dataset.worldHeight);
+    const baseWidth = Number(tileElement.dataset.worldBaseWidth);
+    const baseHeight = Number(tileElement.dataset.worldBaseHeight);
+    const client = getCanvasClientPointFromWorld(x, y);
+    if (!client) continue;
+
+    const contentScale = getScreenPostitContentScale(width, height, baseWidth, baseHeight);
+    tileElement.style.left = `${client.x}px`;
+    tileElement.style.top = `${client.y}px`;
+    tileElement.style.width = `${Math.max(120, width * scale)}px`;
+    tileElement.style.height = `${Math.max(90, height * scale)}px`;
+    tileElement.style.setProperty('--postit-scale', String(Math.max(0.62, Math.min(3.2, scale * contentScale))));
+  }
+}
+
+function createScreenPostitTileElement(tile) {
+  const tileElement = document.createElement('div');
+  tileElement.className = 'lichsoma-screen-postit-tile';
+  tileElement.dataset.postitId = tile.id;
+  tileElement.dataset.worldX = String(tile.x);
+  tileElement.dataset.worldY = String(tile.y);
+  tileElement.dataset.worldWidth = String(tile.width);
+  tileElement.dataset.worldHeight = String(tile.height);
+  tileElement.dataset.worldBaseWidth = String(tile.baseWidth || SCREEN_POSTIT_DEFAULT_WIDTH);
+  tileElement.dataset.worldBaseHeight = String(tile.baseHeight || SCREEN_POSTIT_DEFAULT_HEIGHT);
+
+  const title = getScreenPostitTitle(tile);
+  const bodyText = getScreenPostitBody(tile);
+  const editTitle = localizeWithFallback('Taskbar.PostitEdit', game.i18n.localize('Taskbar.EditQuick') || 'Edit');
+  const deleteTitle = localizeWithFallback('Delete', 'Delete');
+
+  tileElement.innerHTML = `
+    <div class="lichsoma-screen-postit-header" data-postit-drag-handle="true">
+      <div class="lichsoma-screen-postit-title">
+        <i class="fa-solid fa-note-sticky"></i>
+        <span>${foundry.utils.escapeHTML(title)}</span>
+      </div>
+      <div class="lichsoma-screen-postit-actions">
+        <button type="button" class="lichsoma-screen-postit-edit" title="${foundry.utils.escapeHTML(editTitle)}" aria-label="${foundry.utils.escapeHTML(editTitle)}">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+        <button type="button" class="lichsoma-screen-postit-delete" title="${foundry.utils.escapeHTML(deleteTitle)}" aria-label="${foundry.utils.escapeHTML(deleteTitle)}">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+    <div class="lichsoma-screen-postit-body">${notePlainTextToHtml(bodyText) || `<span class="lichsoma-screen-postit-empty">${foundry.utils.escapeHTML(game.i18n.localize('Taskbar.Note'))}</span>`}</div>
+    <div class="lichsoma-screen-postit-resize-handle" data-postit-resize-handle="true" aria-hidden="true"></div>
+  `;
+
+  tileElement.querySelector('.lichsoma-screen-postit-edit')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openScreenPostitEditDialog(tile.id);
+  });
+
+  tileElement.querySelector('.lichsoma-screen-postit-delete')?.addEventListener('click', async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    await deleteScreenPostitTile(tile.id);
+  });
+
+  tileElement.querySelector('.lichsoma-screen-postit-body')?.addEventListener('dblclick', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openScreenPostitEditDialog(tile.id);
+  });
+
+  tileElement.querySelector('.lichsoma-screen-postit-title')?.addEventListener('dblclick', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openScreenPostitEditDialog(tile.id);
+  });
+
+  setupScreenPostitTileDrag(tileElement, tile);
+  setupScreenPostitTileResize(tileElement, tile);
+  return tileElement;
+}
+
+function openScreenPostitEditDialog(tileId) {
+  const tile = getScreenPostitTiles().find(entry => entry.id === tileId);
+  if (!tile) return;
+
+  const title = getScreenPostitTitle(tile);
+  const bodyText = getScreenPostitBody(tile);
+  const dialogTitle = localizeWithFallback('Taskbar.PostitEdit', game.i18n.localize('Taskbar.EditQuick') || 'Edit');
+  const titleLabel = localizeWithFallback('Taskbar.PostitTitle', game.i18n.localize('Taskbar.Note') || 'Title');
+  const bodyLabel = localizeWithFallback('Taskbar.PostitBody', game.i18n.localize('Taskbar.NotePlaceholder') || 'Body');
+
+  const dlg = new DialogV2({
+    modal: true,
+    window: { title: dialogTitle },
+    position: { width: 460 },
+    content: `
+      <form class="lichsoma-screen-postit-edit-form">
+        <div class="form-group">
+          <label>${foundry.utils.escapeHTML(titleLabel)}</label>
+          <input type="text" name="postitTitle" value="${foundry.utils.escapeHTML(title)}" autofocus />
+        </div>
+        <div class="form-group">
+          <label>${foundry.utils.escapeHTML(bodyLabel)}</label>
+          <textarea name="postitBody" rows="8">${foundry.utils.escapeHTML(bodyText)}</textarea>
+        </div>
+      </form>
+    `,
+    buttons: [
+      {
+        action: 'save',
+        label: game.i18n.localize('Taskbar.Save'),
+        icon: 'fa-solid fa-check',
+        default: true,
+        callback: async (event, button, dialog) => {
+          const html = $(dialog.element);
+          const rawTitle = String(html.find('[name="postitTitle"]').val() ?? '').trim();
+          const rawBody = String(html.find('[name="postitBody"]').val() ?? '');
+          await updateScreenPostitTile(tileId, {
+            title: rawTitle || game.i18n.localize('Taskbar.Note'),
+            bodyText: rawBody,
+            modifiedBy: game.user.id,
+            modifiedAt: Date.now()
+          });
+        }
+      },
+      {
+        action: 'cancel',
+        label: game.i18n.localize('Taskbar.Cancel'),
+        icon: 'fa-solid fa-times'
+      }
+    ]
+  });
+  dlg.render(true);
+}
+
+function renderScreenPostitTiles() {
+  if (!canvas?.ready || !canvas?.scene) {
+    removeScreenPostitLayer();
+    return;
+  }
+
+  const layer = ensureScreenPostitLayer();
+  layer.innerHTML = '';
+
+  for (const tile of getScreenPostitTiles()) {
+    layer.appendChild(createScreenPostitTileElement(tile));
+  }
+
+  updateScreenPostitTilePositions();
+}
+
+async function deleteScreenPostitTile(tileId) {
+  try {
+    const tiles = getScreenPostitTiles().filter(tile => tile.id !== tileId);
+    await setScreenPostitTiles(tiles);
+  } catch (error) {
+    console.error('lichsoma-taskbar | failed to delete note post-it tile:', error);
+  }
+}
+
+async function updateScreenPostitTile(tileId, updates) {
+  const tiles = getScreenPostitTiles();
+  const index = tiles.findIndex(tile => tile.id === tileId);
+  if (index < 0) return;
+
+  const nextTiles = foundry.utils.deepClone(tiles);
+  nextTiles[index] = { ...nextTiles[index], ...updates };
+  await setScreenPostitTiles(nextTiles);
+}
+
+function setupScreenPostitTileDrag(tileElement, tile) {
+  const dragHandle = tileElement.querySelector('[data-postit-drag-handle="true"]');
+  if (!dragHandle) return;
+
+  let dragging = false;
+  let startClientX = 0;
+  let startClientY = 0;
+  let startWorldX = 0;
+  let startWorldY = 0;
+
+  dragHandle.addEventListener('mousedown', (event) => {
+    if (event.button !== 0) return;
+    if (event.target.closest('.lichsoma-screen-postit-delete, .lichsoma-screen-postit-edit')) return;
+
+    dragging = true;
+    startClientX = event.clientX;
+    startClientY = event.clientY;
+    startWorldX = Number(tileElement.dataset.worldX) || tile.x;
+    startWorldY = Number(tileElement.dataset.worldY) || tile.y;
+    tileElement.classList.add('is-dragging');
+    event.preventDefault();
+    event.stopPropagation();
+  });
+
+  document.addEventListener('mousemove', (event) => {
+    if (!dragging) return;
+
+    const scale = getCanvasScale() || 1;
+    const nextX = Math.round(startWorldX + ((event.clientX - startClientX) / scale));
+    const nextY = Math.round(startWorldY + ((event.clientY - startClientY) / scale));
+    tileElement.dataset.worldX = String(nextX);
+    tileElement.dataset.worldY = String(nextY);
+    updateScreenPostitTilePositions();
+    event.preventDefault();
+  });
+
+  document.addEventListener('mouseup', async (event) => {
+    if (!dragging) return;
+    dragging = false;
+    tileElement.classList.remove('is-dragging');
+
+    await updateScreenPostitTile(tile.id, {
+      x: Number(tileElement.dataset.worldX) || tile.x,
+      y: Number(tileElement.dataset.worldY) || tile.y
+    });
+    event.preventDefault();
+  });
+}
+
+function setupScreenPostitTileResize(tileElement, tile) {
+  const resizeHandle = tileElement.querySelector('[data-postit-resize-handle="true"]');
+  if (!resizeHandle) return;
+
+  const minWidth = 150;
+  const minHeight = 110;
+  let resizing = false;
+  let startClientX = 0;
+  let startClientY = 0;
+  let startWorldX = 0;
+  let startWorldY = 0;
+  let startWorldWidth = 0;
+  let startWorldHeight = 0;
+
+  resizeHandle.addEventListener('mousedown', (event) => {
+    if (event.button !== 0) return;
+
+    resizing = true;
+    startClientX = event.clientX;
+    startClientY = event.clientY;
+    startWorldX = Number(tileElement.dataset.worldX) || tile.x;
+    startWorldY = Number(tileElement.dataset.worldY) || tile.y;
+    startWorldWidth = Math.max(minWidth, Number(tileElement.dataset.worldWidth) || tile.width || minWidth);
+    startWorldHeight = Math.max(minHeight, Number(tileElement.dataset.worldHeight) || tile.height || minHeight);
+    tileElement.classList.add('is-resizing');
+    event.preventDefault();
+    event.stopPropagation();
+  });
+
+  document.addEventListener('mousemove', (event) => {
+    if (!resizing) return;
+
+    const scale = getCanvasScale() || 1;
+    const deltaWorldX = (event.clientX - startClientX) / scale;
+    const deltaWorldY = (event.clientY - startClientY) / scale;
+    const nextWidth = Math.max(minWidth, Math.round(startWorldWidth + deltaWorldX));
+    const nextHeight = Math.max(minHeight, Math.round(startWorldHeight + deltaWorldY));
+
+    tileElement.dataset.worldX = String(startWorldX);
+    tileElement.dataset.worldY = String(startWorldY);
+    tileElement.dataset.worldWidth = String(nextWidth);
+    tileElement.dataset.worldHeight = String(nextHeight);
+    updateScreenPostitTilePositions();
+    event.preventDefault();
+  });
+
+  document.addEventListener('mouseup', async (event) => {
+    if (!resizing) return;
+    resizing = false;
+    tileElement.classList.remove('is-resizing');
+
+    await updateScreenPostitTile(tile.id, {
+      x: Number(tileElement.dataset.worldX) || tile.x,
+      y: Number(tileElement.dataset.worldY) || tile.y,
+      width: Number(tileElement.dataset.worldWidth) || tile.width,
+      height: Number(tileElement.dataset.worldHeight) || tile.height,
+      modifiedBy: game.user.id,
+      modifiedAt: Date.now()
+    });
+    event.preventDefault();
+  });
+}
+
+
+function createNoteDragGhost(item) {
+  const ghost = document.createElement('div');
+  const title = (item.name || game.i18n.localize('Taskbar.Note')).trim() || game.i18n.localize('Taskbar.Note');
+  const bodyText = noteHtmlToPlainText(item.content);
+  const { width, height } = getScreenPostitDimensionsFromNote(item);
+  const scale = getCanvasScale() || 1;
+  const contentScale = getScreenPostitContentScale(width, height, width, height);
+  const editTitle = localizeWithFallback('Taskbar.PostitEdit', game.i18n.localize('Taskbar.EditQuick') || 'Edit');
+  const deleteTitle = localizeWithFallback('Delete', 'Delete');
+
+  ghost.className = 'lichsoma-screen-postit-tile screen-note-drag-ghost';
+  ghost.innerHTML = `
+    <div class="lichsoma-screen-postit-header">
+      <div class="lichsoma-screen-postit-title">
+        <i class="fa-solid fa-note-sticky"></i>
+        <span>${foundry.utils.escapeHTML(title)}</span>
+      </div>
+      <div class="lichsoma-screen-postit-actions" aria-hidden="true">
+        <button type="button" class="lichsoma-screen-postit-edit" title="${foundry.utils.escapeHTML(editTitle)}" tabindex="-1">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+        <button type="button" class="lichsoma-screen-postit-delete" title="${foundry.utils.escapeHTML(deleteTitle)}" tabindex="-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+    <div class="lichsoma-screen-postit-body">${notePlainTextToHtml(bodyText) || `<span class="lichsoma-screen-postit-empty">${foundry.utils.escapeHTML(game.i18n.localize('Taskbar.Note'))}</span>`}</div>
+    <div class="lichsoma-screen-postit-resize-handle" aria-hidden="true"></div>
+  `;
+
+  Object.assign(ghost.style, {
+    position: 'fixed',
+    left: '0px',
+    top: '0px',
+    width: `${Math.max(120, width * scale)}px`,
+    height: `${Math.max(90, height * scale)}px`,
+    pointerEvents: 'none',
+    zIndex: '100000'
+  });
+  ghost.style.setProperty('--postit-scale', String(Math.max(0.62, Math.min(3.2, scale * contentScale))));
+
+  document.body.appendChild(ghost);
+  return ghost;
+}
+
+function moveNoteDragGhost(ghost, event) {
+  if (!ghost) return;
+  ghost.style.left = `${event.clientX}px`;
+  ghost.style.top = `${event.clientY}px`;
+}
+
+function removeNoteDragGhost(ghost) {
+  if (ghost?.parentElement) ghost.remove();
+}
+
+function restoreCardGridPosition(card, item, col = item.col, row = item.row) {
+  card.style.gridColumn = `${col} / span ${item.colSpan}`;
+  card.style.gridRow = `${row} / span ${item.rowSpan}`;
+}
+
 // 카드 드래그 설정
 function setupCardDrag(card, item) {
   const dragHandles = card.querySelectorAll('[data-drag-handle="true"]');
   let isDragging = false;
   let startX, startY;
   let startCol, startRow;
+  let noteDragGhost = null;
+  const canDropNoteToCanvas = item.type === 'Note';
   
   dragHandles.forEach(handle => {
     handle.addEventListener('mousedown', (e) => {
@@ -1371,6 +2158,7 @@ function setupCardDrag(card, item) {
       
       card.style.opacity = '0.7';
       card.style.zIndex = '1000';
+      card.style.filter = '';
       
       // 격자 표시
       const content = document.getElementById('screen-content');
@@ -1383,6 +2171,31 @@ function setupCardDrag(card, item) {
   document.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
     
+    const content = document.getElementById('screen-content');
+    const contentRect = content?.getBoundingClientRect();
+    const isOutsideScreen = contentRect
+      ? e.clientX < contentRect.left || e.clientX > contentRect.right || e.clientY < contentRect.top || e.clientY > contentRect.bottom
+      : false;
+
+    if (canDropNoteToCanvas && isOutsideScreen) {
+      restoreCardGridPosition(card, item, startCol, startRow);
+      card.style.opacity = '0.45';
+      card.style.filter = 'drop-shadow(0 0 8px rgba(255, 242, 168, 0.9))';
+      card.style.zIndex = '1000';
+
+      if (!noteDragGhost) noteDragGhost = createNoteDragGhost(item);
+      moveNoteDragGhost(noteDragGhost, e);
+      return;
+    }
+
+    if (noteDragGhost) {
+      removeNoteDragGhost(noteDragGhost);
+      noteDragGhost = null;
+    }
+
+    card.style.opacity = '0.7';
+    card.style.filter = '';
+    
     const deltaX = e.clientX - startX;
     const deltaY = e.clientY - startY;
     
@@ -1393,13 +2206,34 @@ function setupCardDrag(card, item) {
     const newCol = Math.max(1, Math.min(screenConfig.columns - item.colSpan + 1, startCol + colOffset));
     const newRow = Math.max(1, Math.min(screenConfig.rows - item.rowSpan + 1, startRow + rowOffset));
     
-    card.style.gridColumn = `${newCol} / span ${item.colSpan}`;
-    card.style.gridRow = `${newRow} / span ${item.rowSpan}`;
+    restoreCardGridPosition(card, item, newCol, newRow);
   });
   
-  document.addEventListener('mouseup', (e) => {
+  document.addEventListener('mouseup', async (e) => {
     if (!isDragging) return;
     isDragging = false;
+
+    if (noteDragGhost) {
+      removeNoteDragGhost(noteDragGhost);
+      noteDragGhost = null;
+    }
+
+    const content = document.getElementById('screen-content');
+    const contentRect = content?.getBoundingClientRect();
+    const isOutsideScreen = contentRect
+      ? e.clientX < contentRect.left || e.clientX > contentRect.right || e.clientY < contentRect.top || e.clientY > contentRect.bottom
+      : false;
+
+    if (canDropNoteToCanvas && isOutsideScreen) {
+      await createCanvasPostitTileFromNote(item, e);
+
+      restoreCardGridPosition(card, item, startCol, startRow);
+      card.style.opacity = '';
+      card.style.zIndex = '';
+      card.style.filter = '';
+      if (content) content.classList.remove('show-grid');
+      return;
+    }
     
     const deltaX = e.clientX - startX;
     const deltaY = e.clientY - startY;
@@ -1412,9 +2246,9 @@ function setupCardDrag(card, item) {
     
     card.style.opacity = '';
     card.style.zIndex = '';
+    card.style.filter = '';
     
     // 격자 숨김
-    const content = document.getElementById('screen-content');
     if (content) content.classList.remove('show-grid');
     
     saveScreenItems();

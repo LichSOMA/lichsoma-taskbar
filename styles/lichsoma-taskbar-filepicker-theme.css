@@ -1,0 +1,99 @@
+/* Only windows identified by Foundry's FilePicker render hooks opt in.
+ * Palette values follow Taskbar; Simple Dark supplies the original dark defaults. */
+body[data-taskbar-theme] .lichsoma-taskbar-filepicker,
+body[data-taskbar-theme] .lichsoma-taskbar-filepicker :is(button, a.button, input, select, textarea, .ui-control) {
+  --color-text-primary: var(--ltb-text, #e8e5df);
+  --color-text-secondary: var(--ltb-muted, #a6a0ae);
+  --color-text-emphatic: var(--ltb-accent, #f0e4c8);
+  --color-text-light-primary: var(--ltb-text, #e8e5df);
+  --color-text-light-heading: var(--ltb-text, #e8e5df);
+  --color-text-light-highlight: var(--ltb-accent, #f0e4c8);
+  --color-text-dark-primary: var(--ltb-text, #e8e5df);
+  --color-text-dark-secondary: var(--ltb-muted, #a6a0ae);
+  --color-text-hyperlink: var(--ltb-accent, #f0e4c8);
+  --color-border-light-primary: var(--ltb-border, #59535f);
+  --color-border-dark-primary: var(--ltb-border, #59535f);
+  --color-border-highlight: var(--ltb-accent, #f0e4c8);
+  --color-scrollbar: var(--ltb-muted, #a6a0ae);
+  --button-background-color: var(--ltb-control, #29252e);
+  --button-text-color: var(--ltb-text, #e8e5df);
+  --button-border-color: var(--ltb-border, #59535f);
+  --button-hover-background-color: var(--ltb-hover, #403846);
+  --button-hover-text-color: var(--ltb-accent, #f0e4c8);
+  --button-focus-outline-color: var(--ltb-accent, #f0e4c8);
+  --input-background-color: var(--ltb-control, #29252e);
+  --input-text-color: var(--ltb-text, #e8e5df);
+  --input-border-color: var(--ltb-border, #59535f);
+  --input-focus-outline-color: var(--ltb-accent, #f0e4c8);
+  --checkbox-checked-color: var(--ltb-accent, #f0e4c8);
+  --checkbox-unchecked-color: var(--ltb-muted, #a6a0ae);
+  --checkbox-background-color: var(--ltb-muted, #a6a0ae);
+  --checkbox-checkmark-color: var(--ltb-bg, #0b0a13);
+  --control-bg-color: var(--ltb-control, #29252e);
+  --control-icon-color: var(--ltb-text, #e8e5df);
+  --control-border-color: var(--ltb-border, #59535f);
+  --control-hover-bg-color: var(--ltb-hover, #403846);
+  --control-hover-icon-color: var(--ltb-accent, #f0e4c8);
+  --control-hover-border-color: var(--ltb-accent, #f0e4c8);
+  --control-active-bg-color: var(--ltb-active, #504455);
+  --control-active-icon-color: var(--ltb-accent, #f0e4c8);
+  --control-active-border-color: var(--ltb-accent, #f0e4c8);
+}
+
+body[data-taskbar-theme] .lichsoma-taskbar-filepicker {
+  background: color-mix(in srgb, var(--taskbar-color, #0b0a13) calc(var(--taskbar-opacity, 0.9) * 100%), transparent);
+  color: var(--color-text-primary);
+  border-color: var(--ltb-border, #59535f);
+  font-family: var(--ltb-font, var(--font-primary, Arial, sans-serif));
+  --font-body: var(--ltb-font, var(--font-primary, Arial, sans-serif));
+  color-scheme: dark;
+  scrollbar-color: var(--ltb-muted, #a6a0ae) transparent;
+}
+body[data-taskbar-theme="simple-light"] .lichsoma-taskbar-filepicker {
+  color-scheme: light;
+}
+
+body[data-taskbar-theme] .lichsoma-taskbar-filepicker :is(.window-header, .window-content) {
+  background: transparent;
+  color: inherit;
+  border-color: var(--ltb-border, #59535f);
+}
+body[data-taskbar-theme] .lichsoma-taskbar-filepicker :is(.window-title, label, legend, .file-name, .directory-name) {
+  color: var(--color-text-primary);
+}
+body[data-taskbar-theme] .lichsoma-taskbar-filepicker :is(.hint, .notes, .file-size, .file-modified) {
+  color: var(--color-text-secondary);
+}
+body[data-taskbar-theme] .lichsoma-taskbar-filepicker :is(button, input, select, textarea) {
+  accent-color: var(--ltb-accent, #f0e4c8);
+}
+body[data-taskbar-theme] .lichsoma-taskbar-filepicker :is(button:not(.icon, [class*="fa-"], .fas, .far, .fab), input, select, textarea) {
+  font-family: inherit;
+}
+body[data-taskbar-theme] .lichsoma-taskbar-filepicker :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]), select, textarea) {
+  background: var(--input-background-color);
+  color: var(--input-text-color);
+  border-color: var(--input-border-color);
+}
+body[data-taskbar-theme] .lichsoma-taskbar-filepicker :is(button, a.button) {
+  background: var(--button-background-color);
+  color: var(--button-text-color);
+  border-color: var(--button-border-color);
+}
+body[data-taskbar-theme] .lichsoma-taskbar-filepicker :is(button, a.button):not(:disabled, [aria-disabled="true"]):is(:hover, :focus-visible) {
+  background: var(--button-hover-background-color);
+  color: var(--button-hover-text-color);
+  border-color: var(--ltb-accent, #f0e4c8);
+}
+body[data-taskbar-theme] .lichsoma-taskbar-filepicker :is(button, a.button):is(.active, [aria-pressed="true"], [aria-selected="true"]) {
+  background: var(--ltb-active, #504455);
+  color: var(--ltb-accent, #f0e4c8);
+}
+body[data-taskbar-theme] .lichsoma-taskbar-filepicker :is(.file, .dir, li.directory):is(:hover, :focus-within) {
+  background: var(--ltb-hover, #403846);
+  color: var(--color-text-primary);
+}
+body[data-taskbar-theme] .lichsoma-taskbar-filepicker :is(.file, .dir, li.directory):is(.selected, .picked, [aria-selected="true"]) {
+  background: var(--ltb-active, #504455);
+  color: var(--ltb-accent, #f0e4c8);
+}

@@ -1,6 +1,9 @@
+import {APPEARANCE_DEFAULTS} from './lichsoma-taskbar-appearance-storage.js';
 // LichSOMA's Taskbar Script
+import {applyTaskbarTheme, registerTaskbarThemeSetting, initializeTaskbarAppearance} from './lichsoma-taskbar-theme.js';
+import {registerTaskbarWebfontSetting, applyTaskbarWebfont} from './lichsoma-taskbar-webfont.js';
 
-const DialogV2 = foundry.applications.api.DialogV2;
+const DialogV2 = window.LichsomaTaskbarCompat?.DialogV2 ?? foundry?.applications?.api?.DialogV2 ?? globalThis.DialogV2;
 
 // 윈도우 순서 저장
 let windowOrder = [];
@@ -36,25 +39,30 @@ Hooks.once('init', () => {
   patchApplicationMinimize();
 });
 
-Hooks.once('ready', () => {
+Hooks.once('ready', async () => {
+  await initializeTaskbarAppearance();
   loadWindowOrder();
   loadShowOffline();
   createTaskbar();
   updateTaskbarStyle();
+  applyTaskbarWebfont();
   
   // 유저 호출 소켓 리스너 등록
   setupUserCallSocket();
 });
 
 function registerSettings() {
+  registerTaskbarThemeSetting();
+  registerTaskbarWebfontSetting();
   game.settings.register('lichsoma-taskbar', 'taskbarColor', {
     name: 'Taskbar.SettingsColor',
     hint: 'Taskbar.SettingsColorHint',
     scope: 'client',
     config: false,
     type: String,
-    default: '#0B0A13',
-    requiresReload: true
+    default: APPEARANCE_DEFAULTS.taskbarColor,
+    requiresReload: false,
+    onChange: applyTaskbarTheme
   });
 
   game.settings.register('lichsoma-taskbar', 'taskbarOpacity', {
@@ -68,8 +76,22 @@ function registerSettings() {
       max: 100,
       step: 5
     },
-    default: 100,
-    requiresReload: true
+    default: APPEARANCE_DEFAULTS.taskbarOpacity,
+    requiresReload: false,
+    onChange: applyTaskbarTheme
+  });
+
+  // GM 전용: 작업표시줄 초대 링크 버튼 표시 (퀘스트 리스트 활성화와 동일하게 모듈 설정에서 on/off)
+  game.settings.register('lichsoma-taskbar', 'showInvitationsButton', {
+    name: 'Taskbar.ShowInvitationsButton',
+    hint: 'Taskbar.ShowInvitationsButtonHint',
+    scope: 'world',
+    config: true,
+    type: Boolean,
+    default: false,
+    onChange: () => {
+      applyInvitationsButtonSetting();
+    }
   });
 
   // 유저 호출 사운드 설정
@@ -200,13 +222,8 @@ function patchApplicationMinimize() {
 }
 
 function updateTaskbarStyle() {
-    const color = game.settings.get('lichsoma-taskbar', 'taskbarColor');
-    const opacity = game.settings.get('lichsoma-taskbar', 'taskbarOpacity');
-
-    // CSS 변수로 스타일 설정 (높이는 고정값 45px 사용)
-    document.documentElement.style.setProperty('--taskbar-height', '45px');
-    document.documentElement.style.setProperty('--taskbar-color', color);
-    document.documentElement.style.setProperty('--taskbar-opacity', opacity / 100);
+    // Appearance values have one writer; height is defined in the stylesheet.
+    applyTaskbarTheme();
 }
 
 function createTaskbar() {
@@ -237,6 +254,7 @@ function createTaskbar() {
       </button>
     </div>
     <div class="taskbar-right">
+      <div class="taskbar-extension-buttons" id="taskbar-extension-buttons" aria-label="${game.i18n.localize('Taskbar.Extensions')}"></div>
       <button class="taskbar-icon-btn" id="taskbar-quest-btn" title="${game.i18n.localize('Taskbar.Quest')}">
         <i class="fa-solid fa-scroll"></i>
       </button>
@@ -246,6 +264,11 @@ function createTaskbar() {
       <button class="taskbar-icon-btn" id="taskbar-settings-btn" title="${game.i18n.localize('Taskbar.Settings')}">
         <i class="fa-solid fa-gears"></i>
       </button>
+      ${game.user.isGM ? `
+      <button class="taskbar-icon-btn" id="taskbar-invitations-btn" title="${game.i18n.localize('Taskbar.Invitations')}">
+        <i class="fa-solid fa-wifi"></i>
+      </button>
+      ` : ''}
       <div class="taskbar-stats">
         <div class="taskbar-stats-perf" id="taskbar-stats-perf">
           <div class="taskbar-stat">
@@ -267,6 +290,9 @@ function createTaskbar() {
   `;
   
   document.body.appendChild(taskbar);
+
+  // 공개 확장 API에 등록된 버튼을 렌더하고 Taskbar 준비 상태를 알림
+  window.LichsomaTaskbar?.api?.notifyTaskbarReady?.();
   
   // 시스템 메뉴 패널 생성
   if (typeof window.createSystemMenuPanel === 'function') {
@@ -304,6 +330,7 @@ function createTaskbar() {
       console.error('lichsoma-taskbar | applyQuestListSetting failed:', err);
     }
   }
+  applyInvitationsButtonSetting();
   
   // 플레이어 버튼 클릭 이벤트
   const playersBtn = taskbar.querySelector('#taskbar-players-btn');
@@ -358,6 +385,15 @@ function createTaskbar() {
     e.target.blur(); // focus 제거
     openGameSettings();
   });
+
+  // 초대 링크 (GM 전용)
+  const invitationsBtn = taskbar.querySelector('#taskbar-invitations-btn');
+  if (invitationsBtn) {
+    invitationsBtn.addEventListener('click', (e) => {
+      e.target.blur();
+      openInvitationLinks();
+    });
+  }
   
   // 외부 클릭 시 메뉴/패널 닫기
   document.addEventListener('click', (e) => {
@@ -1121,25 +1157,20 @@ function hideWindow(app) {
   updateTaskbarWindows();
 }
 
+function isTaskbarCalendarDateEnabled() {
+  if (!game.modules.get('lichsoma-daily-calendar')?.active) return false;
+  try {
+    return Boolean(game.settings.get('lichsoma-daily-calendar', 'enableCalendar'));
+  } catch {
+    return false;
+  }
+}
+
 function updatePerformanceStats() {
   const perfWrap = document.getElementById('taskbar-stats-perf');
   const dateWrap = document.getElementById('taskbar-stats-datetime');
 
-  // lichsoma-daily-calendar: enableCalendar가 켜진 경우에만 날짜 슬롯 사용
-  const ldcActive = Boolean(game.modules.get('lichsoma-daily-calendar')?.active);
-  const ldcShowDate = ldcActive
-    && Boolean(game.settings.get('lichsoma-daily-calendar', 'enableCalendar'));
-  const ltwActive = Boolean(game.modules.get('lichsoma-time-and-weather')?.active);
-
-  let showDate = false;
-  if (ldcShowDate) {
-    showDate = true;
-  } else if (ltwActive) {
-    showDate = Boolean(game.settings.get('lichsoma-time-and-weather', 'enableCalendar'))
-      && Boolean(game.settings.get('lichsoma-time-and-weather', 'taskbarShowDate'));
-  }
-
-  if (showDate) {
+  if (isTaskbarCalendarDateEnabled()) {
     if (perfWrap) perfWrap.style.display = 'none';
     if (dateWrap) dateWrap.style.display = '';
     updateTaskbarDateTime();
@@ -1178,10 +1209,12 @@ function updateTaskbarDateTime() {
   const timeEl = document.getElementById('taskbar-datetime-time');
   if (!dateEl || !timeEl) return;
 
-  // lichsoma-daily-calendar(캘린더 ON) 우선, 없으면 lichsoma-time-and-weather(레거시)
-  const ldcCalOn = Boolean(game.modules.get('lichsoma-daily-calendar')?.active)
-    && Boolean(game.settings.get('lichsoma-daily-calendar', 'enableCalendar'));
-  const sourceId = ldcCalOn ? 'lichsoma-daily-calendar' : 'lichsoma-time-and-weather';
+  if (!isTaskbarCalendarDateEnabled()) {
+    dateEl.textContent = '';
+    timeEl.textContent = '';
+    return;
+  }
+  const sourceId = 'lichsoma-daily-calendar';
 
   const baseStr = game.settings.get(sourceId, 'baseCalendarDate');
   const day = Math.max(1, Number(game.settings.get(sourceId, 'currentDay')) || 1);
@@ -1405,6 +1438,26 @@ function openGameSettings() {
   // Foundry VTT의 게임 설정 창 열기
   const settings = game.settings.sheet;
   settings.render(true);
+}
+
+/** 모듈 설정「초대 링크 버튼 표시」에 맞춰 GM 전용 Wi‑Fi 버튼 표시 동기화 */
+function applyInvitationsButtonSetting() {
+  const btn = document.querySelector('#taskbar-invitations-btn');
+  if (!btn) return;
+  const show = game.settings.get('lichsoma-taskbar', 'showInvitationsButton');
+  btn.style.display = show ? '' : 'none';
+  if (!show) btn.classList.remove('active');
+}
+
+/** 초대 링크(InvitationLinks) — 셋업 메뉴의 invitations과 동일 */
+function openInvitationLinks() {
+  if (!game.user.isGM) return;
+  const InvitationLinks = foundry?.applications?.sidebar?.apps?.InvitationLinks;
+  if (!InvitationLinks) {
+    ui.notifications.warn(game.i18n.localize('Taskbar.InvitationsUnavailable'));
+    return;
+  }
+  new InvitationLinks().render({ force: true });
 }
 
 // 플레이어 목록 패널
@@ -1681,7 +1734,7 @@ function showUserContextMenu(event, user) {
   const contextMenu = document.createElement('nav');
   contextMenu.id = 'context-menu';
   contextMenu.setAttribute('popover', 'manual');
-  contextMenu.className = 'expand-up themed theme-dark';
+    contextMenu.className = 'expand-up themed theme-dark lichsoma-taskbar-context-menu';
   
   const menu = document.createElement('menu');
   menu.className = 'context-items';
@@ -2034,29 +2087,25 @@ function buildUserCallTextShadow(hex) {
  * 유저 호출 소켓 리스너 설정
  */
 function setupUserCallSocket() {
+  const lastCalls = new Map();
   game.socket.on('module.lichsoma-taskbar', (data) => {
-    if (data.type === 'userCall') {
-      // 자신에게 온 호출인지 확인
-      if (data.targetUserId === game.user.id) {
-        // 호출 사운드 재생
-        const soundPath = game.settings.get('lichsoma-taskbar', 'userCallSound');
-        const soundVolume = game.settings.get('lichsoma-taskbar', 'userCallSoundVolume');
-        
-        if (soundPath && foundry?.audio?.AudioHelper) {
-          foundry.audio.AudioHelper.play({
-            src: soundPath,
-            volume: soundVolume,
-            autoplay: true,
-            loop: false
-          }, false);
-        }
-        
-        // 호출 메시지 표시
-        const callerName = data.callerName;
-        const message = game.i18n.format('Taskbar.UserCall.Message', { caller: callerName });
-        showUserCallMessage(message, { callerColor: data.callerColor });
-      }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+    if (data.type !== 'userCall' || data.targetUserId !== game.user.id || typeof data.callerUserId !== 'string') return;
+    const caller = game.users.get(data.callerUserId);
+    if (!caller?.active || caller.id === game.user.id) return;
+    if (!caller.isGM && !game.settings.get('lichsoma-taskbar', 'allowPlayerCall')) return;
+    const now = Date.now();
+    if (now - (lastCalls.get(caller.id) ?? -Infinity) < 2000) return;
+    lastCalls.set(caller.id, now);
+    const soundPath = game.settings.get('lichsoma-taskbar', 'userCallSound');
+    const soundVolume = game.settings.get('lichsoma-taskbar', 'userCallSoundVolume');
+    if (soundPath && foundry?.audio?.AudioHelper) {
+      foundry.audio.AudioHelper.play({
+        src: soundPath, volume: soundVolume, autoplay: true, loop: false
+      }, false)?.catch?.(error => console.warn('lichsoma-taskbar | call sound failed', error));
     }
+    const message = game.i18n.format('Taskbar.UserCall.Message', { caller: caller.name });
+    showUserCallMessage(message, { callerColor: resolveUserColorToHex(caller) });
   });
 }
 
@@ -2064,14 +2113,14 @@ function setupUserCallSocket() {
  * 유저 호출
  */
 function callUser(targetUser) {
-  if (!targetUser) return;
+  if (!targetUser?.active || targetUser.id === game.user.id) return;
+  if (!game.user.isGM && !game.settings.get('lichsoma-taskbar', 'allowPlayerCall')) return;
   
   // 소켓으로 호출 메시지 전송
   game.socket.emit('module.lichsoma-taskbar', {
     type: 'userCall',
     targetUserId: targetUser.id,
-    callerName: game.user.name,
-    callerColor: resolveUserColorToHex(game.user)
+    callerUserId: game.user.id
   });
 }
 

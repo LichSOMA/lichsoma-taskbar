@@ -205,31 +205,53 @@ Hooks.on('renderSceneConfig', (app, html, data) => {
  */
 function attachTagsDialogContentHandlers(dialog) {
   const $html = $(dialog.element);
-  const $container = $html.find('#tags-container');
+  const $input = $html.find('#tags-bulk-input');
+  if (!$input.length) return;
+  $input.trigger('focus');
 
-  const removeTitle = game.i18n.localize('COMMON.Delete');
-  const placeholder = game.i18n.localize('Taskbar.Tags');
+  const nativeInput = $input[0];
+  if (nativeInput && typeof nativeInput.select === 'function') {
+    nativeInput.select();
+  }
+}
 
-  const addEmptyTagRow = () => {
-    const row = $('<div class="tag-item"></div>');
-    const input = $('<input type="text" class="tag-input" autocomplete="off" />');
-    input.attr('placeholder', placeholder);
-    const rm = $('<button type="button" class="tag-remove-btn"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>');
-    rm.attr('title', removeTitle);
-    rm.attr('aria-label', removeTitle);
-    row.append(input, rm);
-    $container.append(row);
-    input.trigger('focus');
-  };
+function formatBracketTags(tags) {
+  return (Array.isArray(tags) ? tags : [])
+    .map(tag => String(tag || '').trim())
+    .filter(Boolean)
+    .map(tag => `[${tag.replace(/[\[\]]/g, '')}]`)
+    .join('');
+}
 
-  $html.find('#tags-dialog-add-btn').on('click', (e) => {
-    e.preventDefault();
-    addEmptyTagRow();
-  });
+function deduplicateTags(tags) {
+  const seen = new Set();
+  return (Array.isArray(tags) ? tags : [])
+    .map(tag => String(tag || '').trim())
+    .filter(Boolean)
+    .filter(tag => {
+      const key = tag.toLocaleLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
 
-  $container.on('click', '.tag-remove-btn', function() {
-    $(this).closest('.tag-item').remove();
-  });
+function parseBracketTags(value) {
+  const source = String(value || '');
+  const bracketTags = [];
+  const tagPattern = /\[([^\]\r\n]+)\]/g;
+  let match;
+
+  while ((match = tagPattern.exec(source)) !== null) {
+    bracketTags.push(match[1]);
+  }
+
+  if (bracketTags.length > 0) {
+    return deduplicateTags(bracketTags);
+  }
+
+  // 하위 호환: 기존 쉼표/줄바꿈 입력도 읽을 수 있게 유지
+  return deduplicateTags(source.split(/[,，、\n\r]+/));
 }
 
 /**
@@ -239,22 +261,22 @@ function attachTagsDialogContentHandlers(dialog) {
  */
 async function openTagsDialog(doc, documentName) {
   const currentTags = doc.getFlag('lichsoma-taskbar', 'tags') || [];
+  const tagsValue = formatBracketTags(currentTags);
 
-  const contentHtml = await foundry.applications.handlebars.renderTemplate(
+  const contentHtml = await (window.LichsomaTaskbarCompat?.renderTemplate ?? foundry?.applications?.handlebars?.renderTemplate ?? globalThis.renderTemplate)(
     'modules/lichsoma-taskbar/templates/tags-dialog.html',
     {
       headerTitle: game.i18n.localize('Taskbar.TagsManagement'),
-      tagsAddLabel: game.i18n.localize('Taskbar.TagsAdd'),
-      removeLabel: game.i18n.localize('COMMON.Delete'),
-      tagPlaceholder: game.i18n.localize('Taskbar.Tags'),
-      tags: currentTags
+      tagPlaceholder: game.i18n.localize('Taskbar.TagsBracketPlaceholder'),
+      tagHint: game.i18n.localize('Taskbar.TagsBracketHint'),
+      tagsValue
     }
   );
 
   const contentDiv = document.createElement('div');
   contentDiv.innerHTML = contentHtml;
 
-  const DialogV2 = foundry.applications.api.DialogV2;
+  const DialogV2 = window.LichsomaTaskbarCompat?.DialogV2 ?? foundry?.applications?.api?.DialogV2 ?? globalThis.DialogV2;
   const dlg = new DialogV2({
     id: `lichsoma-taskbar-tags-${foundry.utils.randomID()}`,
     window: {
@@ -270,11 +292,8 @@ async function openTagsDialog(doc, documentName) {
     }],
     submit: async (result, dialog) => {
       if (result === 'save') {
-        const tags = [];
-        $(dialog.element).find('.tags-dialog .tag-item .tag-input').each((_, el) => {
-          const v = $(el).val().trim();
-          if (v) tags.push(v);
-        });
+        const rawTags = $(dialog.element).find('#tags-bulk-input').val();
+        const tags = parseBracketTags(rawTags);
         await doc.setFlag('lichsoma-taskbar', 'tags', tags);
         ui.notifications.info(game.i18n.localize('Taskbar.TagsSaved'));
       }

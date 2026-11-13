@@ -54,7 +54,7 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-right: none;
   border-radius: 6px 0 0 6px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ltb-text, rgba(255, 255, 255, 0.9));
   cursor: default !important;
   transition: width 0.3s ease, margin-left 0.3s ease, filter 0.2s;
   display: flex;
@@ -71,7 +71,7 @@
 
 .screen-tab-btn.active {
   border-color: rgba(255, 187, 0, 0.6);
-  color: #ffbb00;
+  color: var(--ltb-accent, #ffbb00);
   box-shadow: -2px 0 8px rgba(255, 187, 0, 0.4);
 }
 
@@ -130,7 +130,7 @@
   margin-left: -100px;
   background: rgba(255, 187, 0, 0.25);
   border-color: rgba(255, 187, 0, 0.7);
-  color: #ffbb00;
+  color: var(--ltb-accent, #ffbb00);
 }
 
 .screen-tab-add-btn i {
@@ -166,7 +166,7 @@
 }
 
 .screen-title {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ltb-text, rgba(255, 255, 255, 0.9));
   font-size: 14px;
   font-weight: 600;
   margin: 0;
@@ -190,15 +190,15 @@
 }
 
 .screen-grid-toggle-btn:hover {
-  color: #ffbb00;
+  color: var(--ltb-accent, #ffbb00);
 }
 
 .screen-config-btn:hover {
-  color: #ffbb00;
+  color: var(--ltb-accent, #ffbb00);
 }
 
 .screen-clear-btn:hover {
-  color: #ff4444;
+  color: var(--ltb-danger, #ff4444);
 }
 
 .screen-grid-toggle-btn:focus,
@@ -222,15 +222,15 @@
   background: 
     repeating-linear-gradient(
       0deg,
-      rgba(255, 255, 255, 0.05) 0px,
-      rgba(255, 255, 255, 0.05) 1px,
+      var(--taskbar-screen-grid-color, rgba(255, 255, 255, 0.05)) 0px,
+      var(--taskbar-screen-grid-color, rgba(255, 255, 255, 0.05)) 1px,
       transparent 1px,
       transparent 50px
     ),
     repeating-linear-gradient(
       90deg,
-      rgba(255, 255, 255, 0.05) 0px,
-      rgba(255, 255, 255, 0.05) 1px,
+      var(--taskbar-screen-grid-color, rgba(255, 255, 255, 0.05)) 0px,
+      var(--taskbar-screen-grid-color, rgba(255, 255, 255, 0.05)) 1px,
       transparent 1px,
       transparent 50px
     );
@@ -242,15 +242,15 @@
   background: 
     repeating-linear-gradient(
       0deg,
-      rgba(255, 255, 255, 0.15) 0px,
-      rgba(255, 255, 255, 0.15) 1px,
+      var(--taskbar-screen-grid-emphasis-color, rgba(255, 255, 255, 0.15)) 0px,
+      var(--taskbar-screen-grid-emphasis-color, rgba(255, 255, 255, 0.15)) 1px,
       transparent 1px,
       transparent 50px
     ),
     repeating-linear-gradient(
       90deg,
-      rgba(255, 255, 255, 0.15) 0px,
-      rgba(255, 255, 255, 0.15) 1px,
+      var(--taskbar-screen-grid-emphasis-color, rgba(255, 255, 255, 0.15)) 0px,
+      var(--taskbar-screen-grid-emphasis-color, rgba(255, 255, 255, 0.15)) 1px,
       transparent 1px,
       transparent 50px
     );
@@ -323,14 +323,14 @@
   cursor: default !important;
 }
 
-.screen-item-header i:first-child {
+.screen-item-header > i:first-child {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--ltb-muted, rgba(255, 255, 255, 0.7));
   width: 16px;
   text-align: center;
 }
 
-.screen-item-header i:first-child:active {
+.screen-item-header > i:first-child:active {
   cursor: grabbing !important;
 }
 
@@ -338,7 +338,7 @@
   flex: 1;
   font-size: 12px;
   font-weight: bold;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ltb-text, rgba(255, 255, 255, 0.9));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -346,11 +346,11 @@
 }
 
 .screen-item-name:hover {
-  color: #ffbb00;
+  color: var(--ltb-accent, #ffbb00);
 }
 
 .screen-item-name.no-hover:hover {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ltb-text, rgba(255, 255, 255, 0.9));
 }
 
 .screen-item-name:active {
@@ -396,11 +396,7 @@
 }
 
 .screen-item-remove-btn:hover {
-  color: #ff4444 !important;
-}
-
-.screen-item-remove-btn:hover i {
-  color: #ff4444 !important;
+  color: var(--ltb-danger, #ff4444);
 }
 
 .screen-item-remove-btn:focus,
@@ -452,7 +448,7 @@
   padding: 8px;
   font-size: 12px;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ltb-text, rgba(255, 255, 255, 0.9));
   background: transparent;
   border: none;
   outline: none;
@@ -587,7 +583,7 @@
 .screen-journal-page-title {
   font-size: 12px;
   font-weight: bold;
-  color: #ffbb00;
+  color: var(--ltb-accent, #ffbb00);
   margin: 0 0 6px 0;
   padding-bottom: 4px;
   border-bottom: 1px solid rgba(255, 187, 0, 0.3);
@@ -695,7 +691,7 @@
   padding: 8px;
   font-size: 12px;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ltb-text, rgba(255, 255, 255, 0.9));
   background: transparent;
   border: none;
   outline: none;
@@ -731,3 +727,232 @@
   font-style: italic;
 }
 
+
+/* 캔버스 포스트잇 타일 */
+#lichsoma-taskbar-postit-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  /*
+   * 일반 스테이지 배경(캔버스/Primary) < 포스트잇.
+   * 풀 내러티브 스테이지는 PIXI/Interface 레이어가 섞이므로 z-index만으로는 HTML 포스트잇을
+   * 그 아래로 보낼 수 없다. 내러티브가 화면을 덮는 동안에는 JS가 아래 클래스를 붙여 숨긴다.
+   */
+  z-index: 20;
+}
+
+#lichsoma-taskbar-postit-layer.is-under-speaker-stage-narrative {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.lichsoma-screen-postit-tile {
+  position: fixed;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(180deg, #fff6b8 0%, #ffe783 100%);
+  border: 1px solid rgba(177, 130, 15, 0.7);
+  border-radius: 10px 10px 7px 7px;
+  color: #221c0b;
+  box-shadow:
+    0 16px 22px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  transform-origin: top left;
+  transform: rotate(-0.8deg);
+  transition: box-shadow 0.15s ease, filter 0.15s ease;
+  font-family: var(--font-primary, "Pretendard", "Noto Sans KR", sans-serif);
+}
+
+
+.lichsoma-screen-postit-tile.screen-note-drag-ghost {
+  pointer-events: none !important;
+  z-index: 100000;
+  opacity: 0.95;
+  transform: translate(-50%, -50%) rotate(-0.8deg);
+  transition: none;
+  filter: brightness(1.03);
+  box-shadow:
+    0 20px 28px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(255, 190, 35, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.lichsoma-screen-postit-tile.screen-note-drag-ghost .lichsoma-screen-postit-header {
+  cursor: grabbing;
+}
+
+.lichsoma-screen-postit-tile.screen-note-drag-ghost .lichsoma-screen-postit-actions,
+.lichsoma-screen-postit-tile.screen-note-drag-ghost .lichsoma-screen-postit-resize-handle {
+  opacity: 0.58;
+}
+
+.lichsoma-screen-postit-tile.screen-note-drag-ghost button {
+  pointer-events: none;
+}
+
+.lichsoma-screen-postit-tile:hover,
+.lichsoma-screen-postit-tile.is-dragging {
+  filter: brightness(1.03);
+  box-shadow:
+    0 20px 28px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(255, 190, 35, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.lichsoma-screen-postit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: calc(39px * var(--postit-scale, 1));
+  padding: calc(11px * var(--postit-scale, 1)) calc(12px * var(--postit-scale, 1)) calc(8px * var(--postit-scale, 1));
+  background: linear-gradient(180deg, rgba(241, 181, 43, 0.68), rgba(217, 148, 19, 0.4));
+  border-bottom: 1px solid rgba(137, 94, 10, 0.35);
+  cursor: grab;
+  user-select: none;
+}
+
+.lichsoma-screen-postit-header:active {
+  cursor: grabbing;
+}
+
+.lichsoma-screen-postit-title {
+  display: flex;
+  align-items: center;
+  gap: calc(6px * var(--postit-scale, 1));
+  min-width: 0;
+  font-size: calc(17.5px * var(--postit-scale, 1));
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #2f2207;
+  text-shadow: 0 1px rgba(255, 255, 255, 0.45);
+}
+
+.lichsoma-screen-postit-title i {
+  flex: 0 0 auto;
+  color: #7f5a08;
+}
+
+.lichsoma-screen-postit-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lichsoma-screen-postit-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: calc(4px * var(--postit-scale, 1));
+}
+
+.lichsoma-screen-postit-edit,
+.lichsoma-screen-postit-delete {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(25px * var(--postit-scale, 1));
+  height: calc(25px * var(--postit-scale, 1));
+  min-width: calc(25px * var(--postit-scale, 1));
+  min-height: calc(25px * var(--postit-scale, 1));
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(77, 46, 0, 0.08);
+  color: rgba(61, 36, 0, 0.55);
+  font-size: calc(15px * var(--postit-scale, 1));
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.lichsoma-screen-postit-edit:hover {
+  background: rgba(77, 46, 0, 0.14);
+  color: #4a3100;
+}
+
+.lichsoma-screen-postit-delete:hover {
+  background: rgba(150, 20, 20, 0.14);
+  color: #9f1515;
+}
+
+.lichsoma-screen-postit-edit:focus,
+.lichsoma-screen-postit-edit:active,
+.lichsoma-screen-postit-delete:focus,
+.lichsoma-screen-postit-delete:active {
+  outline: none;
+  box-shadow: none;
+}
+
+.lichsoma-screen-postit-body {
+  flex: 1;
+  padding: calc(13px * var(--postit-scale, 1)) calc(15px * var(--postit-scale, 1)) calc(16px * var(--postit-scale, 1));
+  overflow: hidden;
+  font-size: calc(16.25px * var(--postit-scale, 1));
+  line-height: 1.48;
+  color: #2a210c;
+  word-break: break-word;
+  white-space: normal;
+  background: transparent;
+}
+
+.lichsoma-screen-postit-empty {
+  color: rgba(42, 33, 12, 0.45);
+  font-style: italic;
+}
+
+
+.lichsoma-screen-postit-edit-form textarea {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  line-height: 1.45;
+  font-family: var(--font-primary, "Pretendard", "Noto Sans KR", sans-serif);
+}
+
+.lichsoma-screen-postit-edit-form input[name="postitTitle"] {
+  width: 100%;
+}
+
+.lichsoma-screen-postit-resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: calc(28px * var(--postit-scale, 1));
+  height: calc(28px * var(--postit-scale, 1));
+  min-width: 20px;
+  min-height: 20px;
+  cursor: nwse-resize;
+  z-index: 3;
+  opacity: 0.42;
+  touch-action: none;
+}
+
+.lichsoma-screen-postit-resize-handle::before {
+  content: "";
+  position: absolute;
+  right: calc(6px * var(--postit-scale, 1));
+  bottom: calc(6px * var(--postit-scale, 1));
+  width: calc(15px * var(--postit-scale, 1));
+  height: calc(15px * var(--postit-scale, 1));
+  border-right: 2px solid rgba(78, 47, 0, 0.45);
+  border-bottom: 2px solid rgba(78, 47, 0, 0.45);
+  border-radius: 0 0 3px 0;
+}
+
+.lichsoma-screen-postit-resize-handle:hover,
+.lichsoma-screen-postit-tile.is-resizing .lichsoma-screen-postit-resize-handle {
+  opacity: 0.85;
+}
+
+.lichsoma-screen-postit-tile.is-resizing {
+  filter: brightness(1.04);
+  transition: none;
+  user-select: none;
+}

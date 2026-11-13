@@ -1,0 +1,18 @@
+/* Settings layout, independent of core/global application styles. */
+#lichsoma-taskbar-settings { max-width: calc(100vw - 32px); }
+#lichsoma-taskbar-settings .window-content { overflow-y:auto; max-height:calc(100vh - 120px); }
+#lichsoma-taskbar-settings .form-group { display:grid; grid-template-columns:100px minmax(0,1fr); gap:6px 12px; margin-bottom:16px; }
+#lichsoma-taskbar-settings .form-group > label { align-self:center; }
+#lichsoma-taskbar-settings .form-fields { display:flex; align-items:center; gap:8px; min-width:0; }
+#lichsoma-taskbar-settings .form-fields :is(select,input[type="text"],input[type="range"]) { flex:1; min-width:0; width:100%; }
+#lichsoma-taskbar-settings input[type="color"] { padding:2px; cursor:pointer; pointer-events:auto; }
+#lichsoma-taskbar-settings .form-fields.taskbar-color-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+#lichsoma-taskbar-settings .form-fields.taskbar-color-fields > input { width:100%; min-width:0; height:32px; box-sizing:border-box; }
+#lichsoma-taskbar-settings input[type="number"] { flex:0 0 64px; width:64px; }
+#lichsoma-taskbar-settings .edit-webfont { width:100%; }
+.lichsoma-taskbar-webfont-editor .taskbar-webfont-form { display:flex; flex-direction:column; height:100%; gap:12px; }
+.lichsoma-taskbar-webfont-editor .webfont-main { display:flex; flex-direction:column; flex:1; min-height:0; gap:6px; }
+.lichsoma-taskbar-webfont-editor textarea[name="css"] { flex:1; min-height:400px; resize:none; font-family:monospace; font-size:13px; }
+.lichsoma-taskbar-webfont-editor .CodeMirror { flex:1; height:auto; min-height:400px; font-size:13px; }
+.lichsoma-taskbar-webfont-editor .webfont-actions { display:flex; gap:10px; border-top:1px solid var(--color-border-light-2, rgba(128,128,128,0.3)); padding-top:10px; }
+.lichsoma-taskbar-webfont-editor .webfont-actions button { flex:1; }

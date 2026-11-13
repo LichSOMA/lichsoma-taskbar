@@ -1,0 +1,145 @@
+/* Opt-in skins. Simple Dark retains the original CSS and custom background.
+ * Scope to Taskbar surfaces; never recolor other modules or canvas content. */
+body[data-taskbar-theme="simple-light"] {
+  --ltb-bg: var(--taskbar-color, #cdd1d6);
+  --ltb-control: #d9dce1;
+  --ltb-text: #262a32;
+  --ltb-muted: #505967;
+  --ltb-border: #929ba8;
+  --ltb-hover: #c3c9d2;
+  --ltb-active: #b5becb;
+  --ltb-accent: #285a91;
+  --ltb-success: #20613d;
+  --ltb-danger: #9f2525;
+  --ltb-font: var(--font-primary, Arial, sans-serif);
+}
+body[data-taskbar-theme="simple-light"] #taskbar-screen-panel {
+  --taskbar-screen-grid-color: rgba(80, 89, 103, 0.22);
+  --taskbar-screen-grid-emphasis-color: rgba(80, 89, 103, 0.38);
+}
+body[data-taskbar-theme="retro-terminal"] {
+  --ltb-bg: var(--taskbar-color, #050908);
+  --ltb-control: #0d1b15;
+  --ltb-text: #8fffc7;
+  --ltb-muted: #6cb99a;
+  --ltb-border: rgba(143, 255, 199, 0.3);
+  --ltb-hover: #244b3a;
+  --ltb-active: #17382b;
+  --ltb-accent: #baffdd;
+  --ltb-success: #8fffc7;
+  --ltb-danger: #ff8585;
+  --ltb-font: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+body[data-taskbar-theme="terminal-red"] {
+  --ltb-bg: var(--taskbar-color, #0b0505);
+  --ltb-control: #210e0e;
+  --ltb-text: #ff9b9b;
+  --ltb-muted: #c57878;
+  --ltb-border: rgba(255, 155, 155, 0.3);
+  --ltb-hover: #512525;
+  --ltb-active: #3b1919;
+  --ltb-accent: #ffd0d0;
+  --ltb-success: #ff9b9b;
+  --ltb-danger: #ff8585;
+  --ltb-font: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) {
+  color: var(--ltb-text);
+  font-family: var(--ltb-font);
+  --font-body: var(--ltb-font);
+  --color-text-primary: var(--ltb-text);
+  --color-text-secondary: var(--ltb-muted);
+  --color-text-emphatic: var(--ltb-accent);
+  --color-scrollbar: var(--ltb-muted);
+  --button-background-color: var(--ltb-control);
+  --button-text-color: var(--ltb-text);
+  --button-border-color: var(--ltb-border);
+  --button-hover-background-color: var(--ltb-hover);
+  --button-hover-text-color: var(--ltb-accent);
+  --button-focus-outline-color: var(--ltb-accent);
+  --input-background-color: var(--ltb-control);
+  --input-text-color: var(--ltb-text);
+  --input-border-color: var(--ltb-border);
+  --input-focus-outline-color: var(--ltb-accent);
+  --checkbox-checked-color: var(--ltb-accent);
+  --checkbox-unchecked-color: var(--ltb-muted);
+  --checkbox-background-color: var(--ltb-muted);
+  --checkbox-checkmark-color: var(--ltb-bg);
+  scrollbar-color: var(--ltb-muted) transparent;
+}
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#taskbar-system-menu-panel, #taskbar-player-list-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) {
+  background: var(--ltb-bg);
+  border-color: var(--ltb-border);
+}
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(.window-header, .window-content) {
+  background: var(--ltb-bg);
+  color: var(--ltb-text);
+  border-color: var(--ltb-border);
+}
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(.taskbar-icon-btn, .taskbar-show-hotbar-btn, .taskbar-window-btn, .taskbar-datetime-line, .stat-value, .player-name, .player-list-title, .system-menu-btn, .system-menu-favorite-item, .system-menu-search-item, .system-menu-filter-btn, .screen-title, .screen-item-name, .screen-item-header, .screen-item-controls button, .quest-item-title, .quest-list-title, .tags-dialog-title, .tags-dialog-add-btn, .tags-dialog .tag-input) {
+  color: var(--ltb-text);
+}
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(.stat-label, .system-menu-favorites-title, .system-menu-no-results, .player-list-title span, .toggle-offline-btn, .quest-empty-message, .quest-toggle-icon, .quest-item-count, .quest-item-controls button, .quest-add-btn, .quest-reset-btn, .screen-item-remove-btn, .screen-clear-btn, .screen-grid-toggle-btn, .screen-config-btn, .tags-dialog .tag-remove-btn, .hint) {
+  color: var(--ltb-muted);
+}
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(input, select, textarea, .tag-input) {
+  background: var(--ltb-control);
+  color: var(--ltb-text);
+  border-color: var(--ltb-border);
+}
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(button:not(.icon, .fa-solid, .fas), input, select, textarea, .taskbar-window-btn) { font-family: inherit; }
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(.taskbar-window-btn, .taskbar-scroll-btn, .system-menu-filter-btn, .screen-item-card) {
+  background: var(--ltb-control);
+  color: var(--ltb-text);
+  border-color: var(--ltb-border);
+}
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(.taskbar-icon-btn, .taskbar-show-hotbar-btn, .toggle-offline-btn, .quest-add-btn, .quest-edit-btn, .quest-item-title, .screen-grid-toggle-btn, .screen-config-btn, .tags-dialog-add-btn):is(:hover, :focus-visible, .active) { color: var(--ltb-accent); }
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(.taskbar-window-btn, .taskbar-scroll-btn, .system-menu-btn, .system-menu-favorite-item, .system-menu-search-item, .system-menu-filter-btn, .player-list-item, .context-item):is(:hover, :focus-visible) {
+  background: var(--ltb-hover);
+  color: var(--ltb-accent);
+  border-color: var(--ltb-accent);
+}
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(.taskbar-window-btn, .system-menu-filter-btn):is(.active, [aria-pressed="true"]) {
+  background: var(--ltb-active);
+  color: var(--ltb-accent);
+  border-color: var(--ltb-accent);
+}
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(.player-list-header, .system-menu-content, .system-menu-favorites, .system-menu-favorites-title, .screen-header, .quest-list-header, .quest-item, .quest-item-header, .screen-item-header) { border-color: var(--ltb-border); }
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(.screen-header, .screen-item-header) { background: var(--ltb-control); }
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) .player-list-item.gm .player-name { color: var(--ltb-accent); }
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(.quest-delete-btn, .quest-reset-btn, .tags-dialog .tag-remove-btn, .screen-clear-btn, .screen-item-remove-btn):hover { color: var(--ltb-danger); }
+/* Transparent screen shell and user-selected tab colors are preserved. */
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) #taskbar-quest-list-panel {
+  background: color-mix(in srgb, var(--ltb-bg) 85%, transparent);
+}
+body[data-taskbar-theme="simple-light"] #taskbar-quest-list-panel,
+body[data-taskbar-theme="simple-light"] #taskbar-quest-list-panel * { text-shadow: none; }
+body[data-taskbar-theme="simple-light"] #lichsoma-taskbar { color-scheme: light; }
+body:is([data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) #lichsoma-taskbar { color-scheme: dark; }
+body[data-taskbar-theme="simple-light"] #lichsoma-taskbar .taskbar-logo { filter: brightness(0); }
+body[data-taskbar-theme="simple-light"] #lichsoma-taskbar .taskbar-logo:is(:hover, .active) { filter: brightness(0) saturate(100%) invert(30%) sepia(35%) saturate(1200%) hue-rotate(175deg); }
+body[data-taskbar-theme="retro-terminal"] #lichsoma-taskbar .taskbar-logo { filter: brightness(0) saturate(100%) invert(94%) sepia(27%) saturate(922%) hue-rotate(78deg); }
+body[data-taskbar-theme="retro-terminal"] #lichsoma-taskbar .taskbar-logo:is(:hover, .active) { filter: brightness(0) saturate(100%) invert(94%) sepia(27%) saturate(500%) hue-rotate(78deg) brightness(1.15); }
+body[data-taskbar-theme="terminal-red"] #lichsoma-taskbar .taskbar-logo { filter: brightness(0) saturate(100%) invert(76%) sepia(28%) saturate(1223%) hue-rotate(309deg) brightness(104%) contrast(101%); }
+body[data-taskbar-theme="terminal-red"] #lichsoma-taskbar .taskbar-logo:is(:hover, .active) { filter: brightness(0) saturate(100%) invert(91%) sepia(16%) saturate(708%) hue-rotate(305deg) brightness(104%) contrast(101%); }
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(.system-menu-search-item .item-name, .system-menu-search-item i, .system-menu-search-item .item-type) { color: var(--ltb-text); }
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) .system-menu-search-item .item-type { background: var(--ltb-control); }
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) .system-menu-search-item .favorite-toggle { color: var(--ltb-muted); }
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) .system-menu-search-item .favorite-toggle:is(:hover, .active) { color: var(--ltb-accent); }
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) .screen-item-name:not(.no-hover):hover { color: var(--ltb-accent); }
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) .taskbar-show-desktop { background: var(--ltb-control); border-color: var(--ltb-border); }
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) .taskbar-show-desktop:hover { background: var(--ltb-hover); }
+
+/* Dedicated dialog buttons also need local colors when another module themes
+ * all Foundry applications. Preserve the transparent tag utility buttons. */
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(.window-content button, .dialog-buttons button):not(.tags-dialog-add-btn, .tag-remove-btn) {
+  background: var(--ltb-control);
+  color: var(--ltb-text);
+  border-color: var(--ltb-border);
+}
+body:is([data-taskbar-theme="simple-light"], [data-taskbar-theme="retro-terminal"], [data-taskbar-theme="terminal-red"]) :is(#lichsoma-taskbar, #taskbar-system-menu-panel, #taskbar-player-list-panel, #taskbar-quest-list-panel, #taskbar-screen-panel, #context-menu.lichsoma-taskbar-context-menu, [id^="lichsoma-taskbar-tags-"]) :is(.window-content button, .dialog-buttons button):not(:disabled, .tags-dialog-add-btn, .tag-remove-btn):is(:hover, :focus-visible) {
+  /* Override Speaker Selector's global application hover background. */
+  background: var(--ltb-hover) !important;
+  color: var(--ltb-accent);
+  border-color: var(--ltb-accent);
+}

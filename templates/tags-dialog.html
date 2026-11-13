@@ -1,18 +1,16 @@
 <div class="tags-dialog">
   <div class="tags-dialog-header">
     <span class="tags-dialog-title">{{headerTitle}}</span>
-    <button type="button" class="tags-dialog-add-btn" id="tags-dialog-add-btn" title="{{tagsAddLabel}}" aria-label="{{tagsAddLabel}}">
-      <i class="fa-solid fa-plus"></i>
-    </button>
   </div>
-  <div class="tags-container" id="tags-container">
-    {{#each tags}}
-    <div class="tag-item" data-tag-index="{{@index}}">
-      <input type="text" class="tag-input" value="{{this}}" placeholder="{{tagPlaceholder}}" autocomplete="off" />
-      <button type="button" class="tag-remove-btn" title="{{removeLabel}}" aria-label="{{removeLabel}}">
-        <i class="fa-solid fa-trash" aria-hidden="true"></i>
-      </button>
-    </div>
-    {{/each}}
+  <div class="tags-bulk-editor">
+    <input
+      type="text"
+      class="tags-bulk-input"
+      id="tags-bulk-input"
+      value="{{tagsValue}}"
+      placeholder="{{tagPlaceholder}}"
+      autocomplete="off"
+    />
+    <p class="tags-bulk-hint">{{tagHint}}</p>
   </div>
 </div>

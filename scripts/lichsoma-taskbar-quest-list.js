@@ -1,6 +1,6 @@
 // LichSOMA's Taskbar Quest List Script
 
-const DialogV2 = foundry.applications.api.DialogV2;
+const DialogV2 = window.LichsomaTaskbarCompat?.DialogV2 ?? foundry?.applications?.api?.DialogV2 ?? globalThis.DialogV2;
 
 // 퀘스트 패널 열림 상태 (클라이언트 단위)
 let questListVisible = false;
@@ -33,7 +33,7 @@ Hooks.once('init', () => {
   game.settings.register('lichsoma-taskbar', 'useQuestList', {
     name: 'Taskbar.UseQuestList',
     hint: 'Taskbar.UseQuestListHint',
-    scope: 'client',
+    scope: 'world',
     config: true,
     type: Boolean,
     default: false,
@@ -448,12 +448,12 @@ async function openQuestEditDialog(quest) {
     },
     position: { width: 450 },
     content: `
-        <form id="quest-edit-form">
+        <div id="quest-edit-form" class="lichsoma-quest-edit-form">
           <div class="form-group">
             <label>${game.i18n.localize('Taskbar.QuestTitle')}</label>
             <input type="text" name="title" value="${currentTitle}" placeholder="${game.i18n.localize('Taskbar.QuestTitlePlaceholder')}" required />
           </div>
-          <div id="objectives-container">
+          <div id="objectives-container" class="lichsoma-quest-objectives-container">
             ${objectivesHtml}
           </div>
           <div class="form-group">
@@ -461,7 +461,7 @@ async function openQuestEditDialog(quest) {
               <i class="fa-solid fa-plus"></i> ${game.i18n.localize('Taskbar.QuestAddObjective')}
             </button>
           </div>
-        </form>
+        </div>
       `,
     buttons: [
       {
@@ -495,37 +495,37 @@ async function openQuestEditDialog(quest) {
       if (dialog._lichsomaQuestEditBound) return;
       dialog._lichsomaQuestEditBound = true;
       const html = $(dialog.element);
-      let objectiveCount = currentObjectives.length;
-      html.find('#add-objective-btn').on('click', () => {
-        objectiveCount++;
-        const newObjectiveHtml = `
-            <div class="form-group objective-input-group">
-              <label>${game.i18n.localize('Taskbar.QuestObjective')} ${objectiveCount}</label>
-              <div style="display: flex; gap: 4px;">
-                <input type="text" name="objective${objectiveCount}" placeholder="${game.i18n.localize('Taskbar.QuestObjectivePlaceholder')}" style="flex: 1;" />
-                <button type="button" class="remove-objective-btn" data-index="${objectiveCount - 1}"><i class="fa-solid fa-trash"></i></button>
-              </div>
-            </div>
-          `;
-        html.find('#objectives-container').append(newObjectiveHtml);
-        html.find('.remove-objective-btn').off('click').on('click', function() {
-          const group = $(this).closest('.objective-input-group');
-          group.remove();
-          html.find('.objective-input-group').each(function(index) {
-            $(this).find('label').text(`${game.i18n.localize('Taskbar.QuestObjective')} ${index + 1}`);
-          });
+
+      const renumberObjectiveRows = () => {
+        html.find('.objective-input-group').each(function(index) {
+          const n = index + 1;
+          $(this).find('label').first().text(`${game.i18n.localize('Taskbar.QuestObjective')} ${n}`);
+          $(this).find('input[type="text"]').attr('name', `objective${n}`);
         });
-      });
-      html.find('.remove-objective-btn').on('click', function() {
+      };
+
+      html.find('#objectives-container').on('click', '.remove-objective-btn', function() {
         const group = $(this).closest('.objective-input-group');
         if (html.find('.objective-input-group').length <= 1) {
           ui.notifications.warn(game.i18n.localize('Taskbar.QuestMinObjectives'));
           return;
         }
         group.remove();
-        html.find('.objective-input-group').each(function(index) {
-          $(this).find('label').text(`${game.i18n.localize('Taskbar.QuestObjective')} ${index + 1}`);
-        });
+        renumberObjectiveRows();
+      });
+
+      html.find('#add-objective-btn').on('click', () => {
+        const nextNum = html.find('.objective-input-group').length + 1;
+        const newObjectiveHtml = `
+            <div class="form-group objective-input-group">
+              <label>${game.i18n.localize('Taskbar.QuestObjective')} ${nextNum}</label>
+              <div style="display: flex; gap: 4px;">
+                <input type="text" name="objective${nextNum}" placeholder="${game.i18n.localize('Taskbar.QuestObjectivePlaceholder')}" style="flex: 1;" />
+                <button type="button" class="remove-objective-btn" data-index="${nextNum - 1}"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </div>
+          `;
+        html.find('#objectives-container').append(newObjectiveHtml);
       });
     }
   });

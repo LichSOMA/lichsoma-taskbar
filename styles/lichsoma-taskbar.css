@@ -4,7 +4,7 @@
 :root {
   --taskbar-height: 45px;
   --taskbar-color: #0B0A13;
-  --taskbar-opacity: 1;
+  --taskbar-opacity: 0.9;
 }
 
 /* 기본 플레이어 목록 숨기기 */
@@ -31,13 +31,13 @@
   height: var(--taskbar-height);
   background-color: var(--taskbar-color);
   opacity: var(--taskbar-opacity);
-  border-top: 0px solid rgba(255, 255, 255, 0.1);
+  border-top: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 15px;
-  padding-right: 0;
-  z-index: 100;
+  padding: 0 0 0 15px;
+  /* Foundry application windows and dialogs begin at z-index 100. */
+  z-index: 99;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
 }
 
@@ -72,16 +72,12 @@
   gap: 5px;
   padding: 0 10px;
   scroll-behavior: smooth;
+  scrollbar-width: none;
 }
 
 /* 스크롤바 숨기기 */
 .taskbar-center::-webkit-scrollbar {
   display: none;
-}
-
-.taskbar-center {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
 }
 
 /* 페이드 아웃 그라디언트 */
@@ -129,7 +125,7 @@
   background: rgba(11, 10, 19, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 3px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ltb-text, rgba(255, 255, 255, 0.9));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -144,7 +140,7 @@
 .taskbar-scroll-btn:hover {
   background: rgba(255, 187, 0, 0.3);
   border-color: rgba(255, 187, 0, 0.6);
-  color: #ffbb00;
+  color: var(--ltb-accent, #ffbb00);
 }
 
 .taskbar-scroll-btn.visible {
@@ -165,6 +161,72 @@
   margin-right: 15px;
 }
 
+/* 외부 모듈이 공개 API를 통해 등록하는 확장 버튼 영역 */
+.taskbar-extension-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.taskbar-extension-buttons:empty {
+  display: none;
+}
+
+.taskbar-extension-btn {
+  position: relative;
+}
+
+.taskbar-extension-btn:disabled,
+.taskbar-extension-btn.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.taskbar-extension-label {
+  margin-left: 4px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.taskbar-extension-btn:has(.taskbar-extension-label) {
+  width: auto;
+  min-width: 20px;
+  padding: 0 4px;
+}
+
+.taskbar-extension-badge {
+  position: absolute;
+  top: 1px;
+  right: -6px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: #d63031;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.taskbar-extension-badge[hidden] {
+  display: none !important;
+}
+
+.taskbar-extension-badge.dot {
+  top: 3px;
+  right: -3px;
+  min-width: 7px;
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border-radius: 50%;
+}
+
 /* 로고 스타일 */
 .taskbar-logo {
   width: 32px;
@@ -174,11 +236,7 @@
   cursor: default !important;
 }
 
-.taskbar-logo:hover {
-  filter: brightness(0) saturate(100%) invert(66%) sepia(94%) saturate(1000%) hue-rotate(0deg) brightness(104%) contrast(101%);
-}
-
-.taskbar-logo.active {
+.taskbar-logo:is(:hover, .active) {
   filter: brightness(0) saturate(100%) invert(66%) sepia(94%) saturate(1000%) hue-rotate(0deg) brightness(104%) contrast(101%);
 }
 
@@ -190,7 +248,7 @@
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ltb-text, rgba(255, 255, 255, 0.9));
   transition: color 0.2s;
   display: flex;
   align-items: center;
@@ -200,33 +258,9 @@
   cursor: default !important;
 }
 
-.taskbar-icon-btn:hover {
-  color: #ffbb00;
-  outline: none !important;
-  box-shadow: none !important;
-  border: none !important;
-}
-
-.taskbar-icon-btn:focus,
-.taskbar-icon-btn:active,
-.taskbar-icon-btn:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
-  border: none !important;
-  background: none !important;
-}
-
-.taskbar-icon-btn.active {
-  color: #ffbb00;
-  outline: none !important;
-  box-shadow: none !important;
-  border: none !important;
-}
-
-.taskbar-icon-btn#taskbar-minimize-btn.active {
-  outline: none !important;
-  box-shadow: none !important;
-  border: none !important;
+/* The base rule already resets button chrome for every state. */
+.taskbar-icon-btn:is(:hover, .active) {
+  color: var(--ltb-accent, #ffbb00);
 }
 
 /* 성능 통계 스타일 */
@@ -254,7 +288,7 @@
 }
 
 .taskbar-datetime-line {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ltb-text, rgba(255, 255, 255, 0.9));
   font-size: 12px;
   font-weight: 700;
   line-height: 1.05;
@@ -276,7 +310,7 @@
 }
 
 .taskbar-stat .stat-value {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ltb-text, rgba(255, 255, 255, 0.9));
   font-size: 14px;
   font-weight: bold;
   white-space: nowrap;
@@ -308,7 +342,7 @@
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 0px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ltb-text, rgba(255, 255, 255, 0.9));
   transition: all 0.2s;
   white-space: nowrap;
   font-size: 13px;
@@ -341,7 +375,7 @@
 }
 
 .taskbar-window-btn.minimized .window-name {
-  color: #ff4444;
+  color: var(--ltb-danger, #ff4444);
 }
 
 .taskbar-window-btn .window-name {
@@ -383,7 +417,7 @@
 }
 
 .player-list-title {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ltb-text, rgba(255, 255, 255, 0.9));
   font-size: 12px;
   font-weight: 600;
   margin: 0;
@@ -401,7 +435,7 @@
 }
 
 .toggle-offline-btn:hover {
-  color: #ffbb00;
+  color: var(--ltb-accent, #ffbb00);
 }
 
 .toggle-offline-btn:focus,
@@ -466,7 +500,7 @@
 }
 
 .player-name {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ltb-text, rgba(255, 255, 255, 0.9));
   font-size: 12px;
   font-weight: bold;
   flex: 1;
@@ -476,7 +510,7 @@
 }
 
 .player-list-item.gm .player-name {
-  color: #ffbb00;
+  color: var(--ltb-accent, #ffbb00);
 }
 
 .player-gm-tag {
@@ -503,7 +537,7 @@
   padding: 0px;
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ltb-text, rgba(255, 255, 255, 0.9));
   font-size: 16px;
   z-index: 99;
   transition: all 0.3s ease;
@@ -529,13 +563,8 @@
   font-size: 20px;
 }
 
-.form-group.upload-file input[type="file"]::file-selector-button {
-  background: #6B6B6B;
-  border: 1px solid #6B6B6B;
-}
-
 /* 태그 관리 다이얼로그 (DialogV2, lichsoma-taskbar-tagger) */
-.tags-dialog {
+:where([id^="lichsoma-taskbar-tags-"]) .tags-dialog {
   padding: 5px;
 }
 
@@ -574,7 +603,7 @@
 
 .tags-dialog-add-btn:hover {
   background: transparent;
-  color: #ffbb00;
+  color: var(--ltb-accent, #ffbb00);
 }
 
 .tags-dialog-add-btn i {
@@ -582,7 +611,7 @@
   pointer-events: none;
 }
 
-.tags-dialog .tags-container {
+:where([id^="lichsoma-taskbar-tags-"]) .tags-dialog .tags-container {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -590,24 +619,24 @@
   overflow-y: auto;
 }
 
-.tags-dialog .tag-item {
+:where([id^="lichsoma-taskbar-tags-"]) .tags-dialog .tag-item {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.tags-dialog .tag-input {
+:where([id^="lichsoma-taskbar-tags-"]) .tags-dialog .tag-input {
   flex: 1;
   min-width: 0;
   padding: 4px 8px;
   font-size: 13px;
-  border: 1px solid #999;
+  border: 1px solid var(--input-border-color, #999);
   border-radius: 3px;
-  background: white;
-  color: black;
+  background: var(--input-background-color, white);
+  color: var(--input-text-color, black);
 }
 
-.tags-dialog .tag-remove-btn {
+:where([id^="lichsoma-taskbar-tags-"]) .tags-dialog .tag-remove-btn {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -624,12 +653,12 @@
   transition: color 0.15s;
 }
 
-.tags-dialog .tag-remove-btn:hover {
-  color: #dc3545;
+:where([id^="lichsoma-taskbar-tags-"]) .tags-dialog .tag-remove-btn:hover {
+  color: var(--ltb-danger, #dc3545);
   background: transparent;
 }
 
-.tags-dialog .tag-remove-btn i {
+:where([id^="lichsoma-taskbar-tags-"]) .tags-dialog .tag-remove-btn i {
   font-size: 13px;
   pointer-events: none;
 }

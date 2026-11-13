@@ -19,12 +19,12 @@
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
-  color: #f0f0e0 !important;
+  color: var(--color-text-primary, #f0f0e0) !important;
 }
 
 .window-header .taskbar-tags-manage-btn--legacy-sheet i,
 .window-header .taskbar-tags-manage-btn--legacy-sheet .taskbar-tags-manage-label {
-  color: #f0f0e0 !important;
+  color: var(--color-text-primary, #f0f0e0) !important;
 }
 
 .window-header .taskbar-tags-manage-btn--legacy-sheet:hover,
@@ -32,15 +32,34 @@
   background: transparent !important;
   border: none !important;
   outline: none !important;
-  color: #f0f0e0 !important;
+  color: var(--color-text-primary, #f0f0e0) !important;
 }
 
 .window-header .taskbar-tags-manage-btn--legacy-sheet:hover i,
 .window-header .taskbar-tags-manage-btn--legacy-sheet:hover .taskbar-tags-manage-label,
 .window-header .taskbar-tags-manage-btn--legacy-sheet:focus-visible i,
 .window-header .taskbar-tags-manage-btn--legacy-sheet:focus-visible .taskbar-tags-manage-label {
-  color: #f0f0e0 !important;
+  color: var(--color-text-primary, #f0f0e0) !important;
   text-shadow:
     0 0 8px rgba(255, 95, 95, 0.95),
     0 0 16px rgba(200, 55, 60, 0.65);
+}
+
+:where([id^="lichsoma-taskbar-tags-"]) .tags-dialog .tags-bulk-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+:where([id^="lichsoma-taskbar-tags-"]) .tags-dialog .tags-bulk-input {
+  width: 100%;
+  min-height: 32px;
+  box-sizing: border-box;
+}
+
+:where([id^="lichsoma-taskbar-tags-"]) .tags-dialog .tags-bulk-hint {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.72;
+  line-height: 1.4;
 }

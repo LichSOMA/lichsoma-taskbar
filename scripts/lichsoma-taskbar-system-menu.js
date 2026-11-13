@@ -377,7 +377,7 @@ window.createSystemMenuPanel = function() {
       filePickerBtn.addEventListener('click', () => {
         // FilePicker 열기
         const FilePickerImplementation =
-          foundry?.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker;
+          window.LichsomaTaskbarCompat?.FilePicker ?? foundry?.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker;
         if (!FilePickerImplementation) return;
 
         new FilePickerImplementation({
